@@ -87,7 +87,8 @@ const SkeletonCanvas: React.FC<Props> = ({ landmarks, width, height, showLabels 
       ref={canvasRef}
       width={width}
       height={height}
-      className="absolute inset-0"
+      className="absolute inset-0 w-full h-full"
+      style={{ imageRendering: "auto" }}
     />
   );
 };

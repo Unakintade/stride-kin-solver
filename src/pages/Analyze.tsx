@@ -28,7 +28,7 @@ const Analyze: React.FC = () => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoDimensions, setVideoDimensions] = useState({ width: 640, height: 480 });
   const [fps, setFps] = useState(30);
-  const [maxFrames, setMaxFrames] = useState(300);
+  const [maxFrames, setMaxFrames] = useState(0); // 0 = no limit
   const [isProcessing, setIsProcessing] = useState(false);
   const [stages, setStages] = useState<PipelineStage[]>(INITIAL_STAGES);
   const [rawLandmarks, setRawLandmarks] = useState<FrameLandmarks[]>([]);
@@ -73,7 +73,7 @@ const Analyze: React.FC = () => {
         video,
         fps,
         (progress) => updateStage("detection", { progress }),
-        maxFrames
+        maxFrames > 0 ? maxFrames : undefined
       );
       setRawLandmarks(detected);
       updateStage("detection", { status: "complete", progress: 1 });
@@ -140,8 +140,6 @@ const Analyze: React.FC = () => {
   }, [isPlaying, fps, filteredLandmarks.length]);
 
   const currentLandmark = filteredLandmarks[currentFrame] || null;
-  const displayWidth = Math.min(640, videoDimensions.width);
-  const displayHeight = (displayWidth / videoDimensions.width) * videoDimensions.height;
 
   return (
     <div className="min-h-screen bg-background">
@@ -217,7 +215,7 @@ const Analyze: React.FC = () => {
             {/* Video + Skeleton */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <Card className="bg-card border-border overflow-hidden">
-                <div className="relative" style={{ width: displayWidth, height: displayHeight }}>
+                <div className="relative w-full" style={{ aspectRatio: `${videoDimensions.width} / ${videoDimensions.height}` }}>
                   <video
                     ref={videoRef}
                     src={videoUrl}
@@ -229,8 +227,8 @@ const Analyze: React.FC = () => {
                   />
                   <SkeletonCanvas
                     landmarks={currentLandmark}
-                    width={displayWidth}
-                    height={displayHeight}
+                    width={videoDimensions.width}
+                    height={videoDimensions.height}
                     showLabels
                   />
                 </div>
