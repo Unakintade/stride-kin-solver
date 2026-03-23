@@ -73,7 +73,7 @@ const Analyze: React.FC = () => {
         video,
         fps,
         (progress) => updateStage("detection", { progress }),
-        maxFrames
+        maxFrames > 0 ? maxFrames : undefined
       );
       setRawLandmarks(detected);
       updateStage("detection", { status: "complete", progress: 1 });
