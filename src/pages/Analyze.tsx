@@ -141,6 +141,14 @@ const Analyze: React.FC = () => {
 
   const currentLandmark = filteredLandmarks[currentFrame] || null;
 
+  // Sync video element to current frame timestamp
+  useEffect(() => {
+    const video = videoRef.current;
+    if (video && currentLandmark && !isProcessing) {
+      video.currentTime = currentLandmark.timestamp;
+    }
+  }, [currentFrame, currentLandmark, isProcessing]);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
