@@ -215,7 +215,7 @@ const Analyze: React.FC = () => {
             {/* Video + Skeleton */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               <Card className="bg-card border-border overflow-hidden">
-                <div className="relative" style={{ width: displayWidth, height: displayHeight }}>
+                <div className="relative w-full" style={{ aspectRatio: `${videoDimensions.width} / ${videoDimensions.height}` }}>
                   <video
                     ref={videoRef}
                     src={videoUrl}
@@ -227,8 +227,8 @@ const Analyze: React.FC = () => {
                   />
                   <SkeletonCanvas
                     landmarks={currentLandmark}
-                    width={displayWidth}
-                    height={displayHeight}
+                    width={videoDimensions.width}
+                    height={videoDimensions.height}
                     showLabels
                   />
                 </div>
