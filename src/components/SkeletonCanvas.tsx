@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from "react";
 import type { FrameLandmarks } from "@/lib/biomechanics/types";
-import { SKELETON_CONNECTIONS, IK_LANDMARKS } from "@/lib/biomechanics/constants";
+import { SKELETON_CONNECTIONS, MOCAP_TARGET_LANDMARKS } from "@/lib/biomechanics/constants";
 
 interface Props {
   landmarks: FrameLandmarks | null;
@@ -49,7 +49,7 @@ const SkeletonCanvas: React.FC<Props> = ({ landmarks, width, height, showLabels 
     }
 
     // Draw IK landmark joints (highlighted)
-    for (const [name, idx] of Object.entries(IK_LANDMARKS)) {
+    for (const [name, idx] of Object.entries(MOCAP_TARGET_LANDMARKS)) {
       if (visibility[idx] < 0.3) continue;
       const x = positions[idx][0] * width;
       const y = positions[idx][1] * height;
@@ -71,7 +71,7 @@ const SkeletonCanvas: React.FC<Props> = ({ landmarks, width, height, showLabels 
 
     // Draw other landmarks (dimmer)
     for (let i = 0; i < 33; i++) {
-      if (Object.values(IK_LANDMARKS).includes(i)) continue;
+      if (Object.values(MOCAP_TARGET_LANDMARKS).includes(i)) continue;
       if (visibility[i] < 0.3) continue;
       const x = positions[i][0] * width;
       const y = positions[i][1] * height;

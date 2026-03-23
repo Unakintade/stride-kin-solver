@@ -12,8 +12,11 @@ export const LANDMARK_NAMES: Record<number, string> = {
   30: "right_heel", 31: "left_foot_index", 32: "right_foot_index",
 };
 
-// Landmarks used for IK targets
-export const IK_LANDMARKS: Record<string, number> = {
+/**
+ * Landmarks that receive Kalman + RTS smoothing — analogous to mocap targets
+ * driving a skeletal model in a full MuJoCo pipeline.
+ */
+export const MOCAP_TARGET_LANDMARKS: Record<string, number> = {
   left_shoulder: 11, right_shoulder: 12,
   left_elbow: 13, right_elbow: 14,
   left_wrist: 15, right_wrist: 16,
@@ -21,6 +24,9 @@ export const IK_LANDMARKS: Record<string, number> = {
   left_knee: 25, right_knee: 26,
   left_ankle: 27, right_ankle: 28,
 };
+
+/** @deprecated Use MOCAP_TARGET_LANDMARKS */
+export const IK_LANDMARKS = MOCAP_TARGET_LANDMARKS;
 
 // Limb segments for anthropometric scaling
 export const LIMB_SEGMENTS: Record<string, [number, number]> = {
@@ -62,3 +68,9 @@ export const JOINT_VELOCITY_LIMITS: Record<string, number> = {
 export const KF_PROCESS_NOISE_STD = 0.5;
 export const KF_BASE_MEASUREMENT_NOISE = 0.02;
 export const KF_MIN_VISIBILITY = 0.1;
+
+/** Below this capture rate, joint / foot motion is often undersampled for sprint analysis. */
+export const RECOMMENDED_SPRINT_CAPTURE_FPS = 120;
+
+/** Show a softer warning when below this rate. */
+export const LOW_FPS_WARNING_THRESHOLD = 60;

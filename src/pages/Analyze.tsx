@@ -10,15 +10,28 @@ import VideoUploader from "@/components/VideoUploader";
 import PipelineStatus from "@/components/PipelineStatus";
 import SkeletonCanvas from "@/components/SkeletonCanvas";
 import ResultsDashboard from "@/components/ResultsDashboard";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Checkbox } from "@/components/ui/checkbox";
 import type { FrameLandmarks, FrameResult, PipelineStage } from "@/lib/biomechanics/types";
 import { detectPoseInVideo } from "@/lib/biomechanics/detection";
 import { smoothLandmarks } from "@/lib/biomechanics/filtering";
 import { computeKinematics, computeAnthropometry } from "@/lib/biomechanics/kinematics";
+import {
+  LOW_FPS_WARNING_THRESHOLD,
+  RECOMMENDED_SPRINT_CAPTURE_FPS,
+} from "@/lib/biomechanics/constants";
+import { inferVideoFrameRate } from "@/lib/biomechanics/video";
 
 const INITIAL_STAGES: PipelineStage[] = [
-  { id: "detection", name: "Detection", description: "BlazePose", status: "pending", progress: 0 },
-  { id: "filtering", name: "Filtering", description: "Kalman", status: "pending", progress: 0 },
-  { id: "kinematics", name: "Kinematics", description: "IK", status: "pending", progress: 0 },
+  { id: "detection", name: "Vision", description: "BlazePose", status: "pending", progress: 0 },
+  { id: "filtering", name: "Filtering", description: "CA-KF + RTS", status: "pending", progress: 0 },
+  {
+    id: "kinematics",
+    name: "Kinematics",
+    description: "Joint geometry",
+    status: "pending",
+    progress: 0,
+  },
   { id: "results", name: "Results", description: "Export", status: "pending", progress: 0 },
 ];
 
@@ -28,6 +41,9 @@ const Analyze: React.FC = () => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoDimensions, setVideoDimensions] = useState({ width: 640, height: 480 });
   const [fps, setFps] = useState(30);
+  const [inferredFps, setInferredFps] = useState<number | null>(null);
+  const [fieldWidthMeters, setFieldWidthMeters] = useState("");
+  const [useRtsSmoother, setUseRtsSmoother] = useState(true);
   const [maxFrames, setMaxFrames] = useState(0); // 0 = no limit
   const [isProcessing, setIsProcessing] = useState(false);
   const [stages, setStages] = useState<PipelineStage[]>(INITIAL_STAGES);
@@ -57,6 +73,17 @@ const Analyze: React.FC = () => {
     const video = videoRef.current;
     if (!video) return;
     setVideoDimensions({ width: video.videoWidth, height: video.videoHeight });
+    setInferredFps(null);
+    const tryInfer = () => {
+      void inferVideoFrameRate(video).then((rate) => {
+        if (rate != null && rate > 0) {
+          setInferredFps(rate);
+          setFps((prev) => (prev === 30 ? Math.round(rate) : prev));
+        }
+      });
+    };
+    tryInfer();
+    window.setTimeout(tryInfer, 250);
   }, []);
 
   const runPipeline = useCallback(async () => {
@@ -85,16 +112,36 @@ const Analyze: React.FC = () => {
 
       // Stage 2: Filtering
       updateStage("filtering", { status: "active", progress: 0 });
-      const filtered = smoothLandmarks(detected, fps, (progress) =>
-        updateStage("filtering", { progress })
+      const filtered = smoothLandmarks(
+        detected,
+        fps,
+        (progress) => updateStage("filtering", { progress }),
+        { useRtsSmoother }
       );
       setFilteredLandmarks(filtered);
       updateStage("filtering", { status: "complete", progress: 1 });
 
       // Stage 3: Kinematics
       updateStage("kinematics", { status: "active", progress: 0 });
-      const kinResults = computeKinematics(filtered, fps, (progress) =>
-        updateStage("kinematics", { progress })
+      const fw = fieldWidthMeters.trim();
+      const fieldM = fw === "" ? NaN : Number(fw);
+      const kinResults = computeKinematics(
+        filtered,
+        fps,
+        (progress) => updateStage("kinematics", { progress }),
+        {
+          metricCalibration:
+            Number.isFinite(fieldM) &&
+            fieldM > 0 &&
+            video.videoWidth > 0 &&
+            video.videoHeight > 0
+              ? {
+                  fieldWidthMeters: fieldM,
+                  videoWidthPx: video.videoWidth,
+                  videoHeightPx: video.videoHeight,
+                }
+              : null,
+        }
       );
       setResults(kinResults);
       updateStage("kinematics", { status: "complete", progress: 1 });
@@ -113,7 +160,7 @@ const Analyze: React.FC = () => {
     } finally {
       setIsProcessing(false);
     }
-  }, [videoUrl, fps, maxFrames, updateStage]);
+  }, [videoUrl, fps, maxFrames, updateStage, useRtsSmoother, fieldWidthMeters]);
 
   // Playback animation
   useEffect(() => {
@@ -174,7 +221,27 @@ const Analyze: React.FC = () => {
           <>
             {/* Controls */}
             <Card className="bg-card border-border">
-              <CardContent className="p-4 flex flex-wrap items-end gap-4">
+              <CardContent className="p-4 flex flex-col gap-4">
+                {fps > 0 && fps < LOW_FPS_WARNING_THRESHOLD && (
+                  <Alert className="border-amber-500/40 bg-amber-500/10 text-foreground">
+                    <AlertTitle className="font-mono text-xs">Low sampling rate</AlertTitle>
+                    <AlertDescription className="font-mono text-[11px] text-muted-foreground">
+                      At {fps} Hz, fast limb motion is often undersampled. Prefer{" "}
+                      {RECOMMENDED_SPRINT_CAPTURE_FPS} Hz or higher for sprint-style capture when
+                      possible.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {fps >= LOW_FPS_WARNING_THRESHOLD && fps < RECOMMENDED_SPRINT_CAPTURE_FPS && (
+                  <Alert className="border-border bg-secondary/50">
+                    <AlertTitle className="font-mono text-xs">Capture rate</AlertTitle>
+                    <AlertDescription className="font-mono text-[11px] text-muted-foreground">
+                      For explosive sprinting, {RECOMMENDED_SPRINT_CAPTURE_FPS}+ fps is recommended;
+                      current setting ({fps} Hz) may still blur feet at foot strike.
+                    </AlertDescription>
+                  </Alert>
+                )}
+                <div className="flex flex-wrap items-end gap-4">
                 <div className="space-y-1">
                   <Label className="text-xs font-mono text-muted-foreground">FPS</Label>
                   <Input
@@ -184,6 +251,41 @@ const Analyze: React.FC = () => {
                     className="w-24 h-8 text-sm font-mono"
                     disabled={isProcessing}
                   />
+                  {inferredFps != null && (
+                    <p className="text-[10px] font-mono text-muted-foreground max-w-[10rem]">
+                      Track ~{inferredFps.toFixed(0)} Hz (if reported by browser)
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-1 flex-1 min-w-[12rem]">
+                  <Label className="text-xs font-mono text-muted-foreground">
+                    Field width (m), optional
+                  </Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    placeholder="e.g. 10 (known span across frame)"
+                    value={fieldWidthMeters}
+                    onChange={(e) => setFieldWidthMeters(e.target.value)}
+                    className="h-8 text-sm font-mono"
+                    disabled={isProcessing}
+                  />
+                  <p className="text-[10px] font-mono text-muted-foreground">
+                    Calibrate meters using a known horizontal distance across the full frame width
+                    (track lines). Leave empty for automatic scale from limb ratios.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 pt-5">
+                  <Checkbox
+                    id="rts"
+                    checked={useRtsSmoother}
+                    onCheckedChange={(c) => setUseRtsSmoother(c === true)}
+                    disabled={isProcessing}
+                  />
+                  <Label htmlFor="rts" className="text-xs font-mono cursor-pointer">
+                    RTS smoother (offline)
+                  </Label>
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs font-mono text-muted-foreground">Max Frames</Label>
@@ -211,12 +313,15 @@ const Analyze: React.FC = () => {
                     setRawLandmarks([]);
                     setFilteredLandmarks([]);
                     setResults([]);
+                    setInferredFps(null);
+                    setFieldWidthMeters("");
                   }}
                   className="font-mono text-xs"
                   disabled={isProcessing}
                 >
                   Reset
                 </Button>
+                </div>
               </CardContent>
             </Card>
 
