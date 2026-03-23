@@ -28,7 +28,7 @@ const Analyze: React.FC = () => {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [videoDimensions, setVideoDimensions] = useState({ width: 640, height: 480 });
   const [fps, setFps] = useState(30);
-  const [maxFrames, setMaxFrames] = useState(300);
+  const [maxFrames, setMaxFrames] = useState(0); // 0 = no limit
   const [isProcessing, setIsProcessing] = useState(false);
   const [stages, setStages] = useState<PipelineStage[]>(INITIAL_STAGES);
   const [rawLandmarks, setRawLandmarks] = useState<FrameLandmarks[]>([]);
