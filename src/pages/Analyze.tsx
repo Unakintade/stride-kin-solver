@@ -140,8 +140,6 @@ const Analyze: React.FC = () => {
   }, [isPlaying, fps, filteredLandmarks.length]);
 
   const currentLandmark = filteredLandmarks[currentFrame] || null;
-  const displayWidth = Math.min(640, videoDimensions.width);
-  const displayHeight = (displayWidth / videoDimensions.width) * videoDimensions.height;
 
   return (
     <div className="min-h-screen bg-background">
