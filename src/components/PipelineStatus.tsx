@@ -36,7 +36,7 @@ const PipelineStatus: React.FC<Props> = ({ stages }) => {
             ) : (
               STAGE_ICONS[stage.id] || <Circle className="w-3.5 h-3.5" />
             )}
-            <span>{stage.name}</span>
+            <span title={stage.description}>{stage.name}</span>
             {stage.status === "active" && stage.progress > 0 && (
               <span className="text-[10px] opacity-70">
                 {Math.round(stage.progress * 100)}%

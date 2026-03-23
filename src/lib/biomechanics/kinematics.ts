@@ -1,6 +1,18 @@
 import type { FrameLandmarks, FrameResult, JointAngle } from "./types";
 import { LIMB_SEGMENTS, JOINT_VELOCITY_LIMITS } from "./constants";
 
+/** Calibrate normalized image coordinates to meters using a known horizontal span (e.g. track markings). */
+export interface MetricCalibrationInput {
+  /** Meters represented by the full normalized horizontal extent (0→1 across frame width). */
+  fieldWidthMeters: number;
+  videoWidthPx: number;
+  videoHeightPx: number;
+}
+
+export interface ComputeKinematicsOptions {
+  metricCalibration?: MetricCalibrationInput | null;
+}
+
 /**
  * Calculate joint angle between three 3D points (in degrees).
  */
@@ -117,7 +129,8 @@ function detectHeelStrikes(
 function computeStrideLengths(
   landmarks: FrameLandmarks[],
   heelStrikes: { left: number[]; right: number[] },
-  scale: number
+  scaleX: number,
+  scaleY: number
 ): Map<number, number> {
   const strideLengthMap = new Map<number, number>();
 
@@ -133,10 +146,12 @@ function computeStrideLengths(
         const prevHipY = (landmarks[f - 1].positions[23][1] + landmarks[f - 1].positions[24][1]) / 2;
         const currHipX = (landmarks[f].positions[23][0] + landmarks[f].positions[24][0]) / 2;
         const currHipY = (landmarks[f].positions[23][1] + landmarks[f].positions[24][1]) / 2;
-        totalDisplacement += Math.sqrt((currHipX - prevHipX) ** 2 + (currHipY - prevHipY) ** 2);
+        const dx = currHipX - prevHipX;
+        const dy = currHipY - prevHipY;
+        totalDisplacement += Math.sqrt((dx * scaleX) ** 2 + (dy * scaleY) ** 2);
       }
 
-      const strideMeters = totalDisplacement * scale;
+      const strideMeters = totalDisplacement;
 
       // Assign this stride length to all frames in the stride
       for (let f = startFrame; f <= endFrame; f++) {
@@ -152,22 +167,37 @@ function computeStrideLengths(
 }
 
 /**
- * Compute kinematic results from smoothed landmarks.
+ * Compute kinematic results from smoothed landmarks (geometric joint angles — not MuJoCo IK).
  */
 export function computeKinematics(
   landmarks: FrameLandmarks[],
   fps: number,
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
+  options?: ComputeKinematicsOptions
 ): FrameResult[] {
   const results: FrameResult[] = [];
   const dt = 1 / fps;
 
-  // Estimate image-to-world scale factor
-  const scale = estimateScaleFactor(landmarks);
+  const cal = options?.metricCalibration;
+  let scaleX: number;
+  let scaleY: number;
+  if (
+    cal &&
+    cal.fieldWidthMeters > 0 &&
+    cal.videoWidthPx > 0 &&
+    cal.videoHeightPx > 0
+  ) {
+    scaleX = cal.fieldWidthMeters;
+    scaleY = cal.fieldWidthMeters * (cal.videoHeightPx / cal.videoWidthPx);
+  } else {
+    const scale = estimateScaleFactor(landmarks);
+    scaleX = scale;
+    scaleY = scale;
+  }
 
   // Detect gait events for stride computation
   const heelStrikes = detectHeelStrikes(landmarks, fps);
-  const strideLengthMap = computeStrideLengths(landmarks, heelStrikes, scale);
+  const strideLengthMap = computeStrideLengths(landmarks, heelStrikes, scaleX, scaleY);
 
   for (let i = 0; i < landmarks.length; i++) {
     const fl = landmarks[i];
@@ -208,8 +238,8 @@ export function computeKinematics(
     const comWorldZ = (wp[23][2] + wp[24][2]) / 2;
 
     const comPosition: [number, number, number] = [
-      comImageX * scale,
-      comImageY * scale,
+      comImageX * scaleX,
+      comImageY * scaleY,
       comWorldZ,
     ];
 
