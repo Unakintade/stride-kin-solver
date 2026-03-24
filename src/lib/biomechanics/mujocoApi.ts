@@ -49,7 +49,7 @@ export function setMuJoCoBackendUrl(url: string): void {
 export async function checkMuJoCoHealth(): Promise<boolean> {
   try {
     const res = await fetch(`${getMuJoCoBackendUrl()}/health`, {
-      signal: AbortSignal.timeout(3000),
+      signal: AbortSignal.timeout(30000),
     });
     return res.ok;
   } catch {
