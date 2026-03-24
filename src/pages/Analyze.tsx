@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import VideoUploader from "@/components/VideoUploader";
 import PipelineStatus from "@/components/PipelineStatus";
 import SkeletonCanvas from "@/components/SkeletonCanvas";
+import VideoCalibration from "@/components/VideoCalibration";
 import ResultsDashboard from "@/components/ResultsDashboard";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
