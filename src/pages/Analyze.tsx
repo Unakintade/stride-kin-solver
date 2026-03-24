@@ -380,6 +380,7 @@ const Analyze: React.FC = () => {
                     height={videoDimensions.height}
                     showLabels
                   />
+                  {calibration.overlay}
                 </div>
 
                 {/* Playback controls */}
