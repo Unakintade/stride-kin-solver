@@ -46,6 +46,27 @@ const ResultsDashboard: React.FC<Props> = ({ results, anthropometry }) => {
     });
   }, [results]);
 
+  const angVelData = useMemo(() => {
+    return results.map((r) => {
+      const row: Record<string, number> = { time: r.timestamp };
+      r.jointAngles.forEach((j) => {
+        row[j.name] = Number(j.velocityRadS.toFixed(2));
+      });
+      return row;
+    });
+  }, [results]);
+
+  const peakAngVel = useMemo(() => {
+    const peaks: Record<string, number> = {};
+    results.forEach((r) => {
+      r.jointAngles.forEach((j) => {
+        const abs = Math.abs(j.velocityRadS);
+        if (!peaks[j.name] || abs > peaks[j.name]) peaks[j.name] = abs;
+      });
+    });
+    return peaks;
+  }, [results]);
+
   const strideData = useMemo(
     () => results.map((r) => ({ time: r.timestamp, stride: Number(r.strideLength.toFixed(3)) })),
     [results]
