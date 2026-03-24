@@ -45,6 +45,7 @@ const Analyze: React.FC = () => {
   const [fieldWidthMeters, setFieldWidthMeters] = useState("");
   const [useRtsSmoother, setUseRtsSmoother] = useState(true);
   const [maxFrames, setMaxFrames] = useState(0); // 0 = no limit
+  const [playbackDuration, setPlaybackDuration] = useState(2); // seconds
   const [isProcessing, setIsProcessing] = useState(false);
   const [stages, setStages] = useState<PipelineStage[]>(INITIAL_STAGES);
   const [rawLandmarks, setRawLandmarks] = useState<FrameLandmarks[]>([]);
@@ -166,8 +167,7 @@ const Analyze: React.FC = () => {
   useEffect(() => {
     if (!isPlaying || filteredLandmarks.length === 0) return;
     let lastTime = performance.now();
-    const playbackDuration = 2000; // 2 seconds
-    const interval = playbackDuration / filteredLandmarks.length;
+    const interval = (playbackDuration * 1000) / filteredLandmarks.length;
 
     const tick = (now: number) => {
       if (now - lastTime >= interval) {
@@ -185,7 +185,7 @@ const Analyze: React.FC = () => {
     };
     animRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animRef.current);
-  }, [isPlaying, fps, filteredLandmarks.length]);
+  }, [isPlaying, playbackDuration, filteredLandmarks.length]);
 
   const currentLandmark = filteredLandmarks[currentFrame] || null;
 
@@ -297,6 +297,31 @@ const Analyze: React.FC = () => {
                     className="w-24 h-8 text-sm font-mono"
                     disabled={isProcessing}
                   />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-mono text-muted-foreground">
+                    Playback (s)
+                  </Label>
+                  <Input
+                    type="number"
+                    step="0.5"
+                    min="0.5"
+                    max="60"
+                    value={playbackDuration}
+                    onChange={(e) => setPlaybackDuration(Math.max(0.5, Number(e.target.value)))}
+                    className="w-24 h-8 text-sm font-mono"
+                  />
+                  {filteredLandmarks.length > 0 && (
+                    <p className="text-[10px] font-mono text-muted-foreground max-w-[14rem]">
+                      {filteredLandmarks.length} frames over {playbackDuration}s →{" "}
+                      {(filteredLandmarks.length / playbackDuration).toFixed(1)} fps playback
+                      {fps > 0 && (
+                        <span>
+                          {" "}({(playbackDuration / (filteredLandmarks.length / fps)).toFixed(2)}× real-time)
+                        </span>
+                      )}
+                    </p>
+                  )}
                 </div>
                 <Button
                   onClick={runPipeline}
