@@ -46,6 +46,27 @@ const ResultsDashboard: React.FC<Props> = ({ results, anthropometry }) => {
     });
   }, [results]);
 
+  const angVelData = useMemo(() => {
+    return results.map((r) => {
+      const row: Record<string, number> = { time: r.timestamp };
+      r.jointAngles.forEach((j) => {
+        row[j.name] = Number(j.velocityRadS.toFixed(2));
+      });
+      return row;
+    });
+  }, [results]);
+
+  const peakAngVel = useMemo(() => {
+    const peaks: Record<string, number> = {};
+    results.forEach((r) => {
+      r.jointAngles.forEach((j) => {
+        const abs = Math.abs(j.velocityRadS);
+        if (!peaks[j.name] || abs > peaks[j.name]) peaks[j.name] = abs;
+      });
+    });
+    return peaks;
+  }, [results]);
+
   const strideData = useMemo(
     () => results.map((r) => ({ time: r.timestamp, stride: Number(r.strideLength.toFixed(3)) })),
     [results]
@@ -133,6 +154,44 @@ const ResultsDashboard: React.FC<Props> = ({ results, anthropometry }) => {
               ))}
             </LineChart>
           </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Angular Velocity Chart */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-mono text-foreground">Angular Velocity (rad/s)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={angVelData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 15%, 18%)" />
+              <XAxis dataKey="time" tick={{ fontSize: 10, fill: "hsl(215, 15%, 55%)" }} tickFormatter={(v: number) => `${v.toFixed(1)}s`} />
+              <YAxis tick={{ fontSize: 10, fill: "hsl(215, 15%, 55%)" }} />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(220, 18%, 10%)", border: "1px solid hsl(220, 15%, 18%)", borderRadius: 6, fontSize: 11 }} />
+              <ReferenceLine y={0} stroke="hsl(215, 15%, 30%)" strokeDasharray="3 3" />
+              {selectedJoints.map((name, i) => (
+                <Line key={name} type="monotone" dataKey={name} stroke={CHART_COLORS[i % CHART_COLORS.length]} strokeWidth={1.5} dot={false} />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Peak Angular Velocities */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-mono text-foreground">Peak Angular Velocities</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {Object.entries(peakAngVel).map(([name, peak]) => (
+              <div key={name} className="bg-secondary rounded-md p-3">
+                <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">{name}</p>
+                <p className="text-sm font-semibold text-foreground mt-1">{peak.toFixed(1)} rad/s</p>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
