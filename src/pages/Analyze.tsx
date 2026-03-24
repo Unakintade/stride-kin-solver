@@ -185,7 +185,7 @@ const Analyze: React.FC = () => {
     };
     animRef.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(animRef.current);
-  }, [isPlaying, fps, filteredLandmarks.length]);
+  }, [isPlaying, playbackDuration, filteredLandmarks.length]);
 
   const currentLandmark = filteredLandmarks[currentFrame] || null;
 
