@@ -261,21 +261,30 @@ const Analyze: React.FC = () => {
                 </div>
                 <div className="space-y-1 flex-1 min-w-[12rem]">
                   <Label className="text-xs font-mono text-muted-foreground">
-                    Field width (m), optional
+                    Field width (m)
                   </Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="e.g. 10 (known span across frame)"
-                    value={fieldWidthMeters}
-                    onChange={(e) => setFieldWidthMeters(e.target.value)}
-                    className="h-8 text-sm font-mono"
-                    disabled={isProcessing}
-                  />
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="e.g. 10"
+                      value={fieldWidthMeters}
+                      onChange={(e) => setFieldWidthMeters(e.target.value)}
+                      className="h-8 text-sm font-mono flex-1"
+                      disabled={isProcessing}
+                    />
+                    <VideoCalibration
+                      videoElement={videoRef.current}
+                      videoWidth={videoDimensions.width}
+                      videoHeight={videoDimensions.height}
+                      onCalibrated={(fw) => setFieldWidthMeters(fw.toFixed(2))}
+                      disabled={isProcessing}
+                    />
+                  </div>
                   <p className="text-[10px] font-mono text-muted-foreground">
-                    Calibrate meters using a known horizontal distance across the full frame width
-                    (track lines). Leave empty for automatic scale from limb ratios.
+                    Enter manually, or click "Calibrate from video" to measure from two points.
+                    Leave empty for automatic scale from limb ratios.
                   </p>
                 </div>
                 <div className="flex items-center gap-2 pt-5">
