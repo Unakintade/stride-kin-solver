@@ -36,7 +36,7 @@ export interface MuJoCoSolveResponse {
   };
 }
 
-const DEFAULT_BACKEND_URL = "http://localhost:8000";
+const DEFAULT_BACKEND_URL = "https://biomech-worker.onrender.com";
 
 export function getMuJoCoBackendUrl(): string {
   return localStorage.getItem("mujoco_backend_url") || DEFAULT_BACKEND_URL;
