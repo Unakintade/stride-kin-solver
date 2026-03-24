@@ -82,7 +82,7 @@ export async function solveMuJoCo(
 
   onProgress?.(0.1);
 
-  const res = await fetch(`${url}/solve`, {
+  const res = await fetch(`${url}/analyze`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
