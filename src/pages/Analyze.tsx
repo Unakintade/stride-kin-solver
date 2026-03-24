@@ -298,6 +298,31 @@ const Analyze: React.FC = () => {
                     disabled={isProcessing}
                   />
                 </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-mono text-muted-foreground">
+                    Playback (s)
+                  </Label>
+                  <Input
+                    type="number"
+                    step="0.5"
+                    min="0.5"
+                    max="60"
+                    value={playbackDuration}
+                    onChange={(e) => setPlaybackDuration(Math.max(0.5, Number(e.target.value)))}
+                    className="w-24 h-8 text-sm font-mono"
+                  />
+                  {filteredLandmarks.length > 0 && (
+                    <p className="text-[10px] font-mono text-muted-foreground max-w-[14rem]">
+                      {filteredLandmarks.length} frames over {playbackDuration}s →{" "}
+                      {(filteredLandmarks.length / playbackDuration).toFixed(1)} fps playback
+                      {fps > 0 && (
+                        <span>
+                          {" "}({(playbackDuration / (filteredLandmarks.length / fps)).toFixed(2)}× real-time)
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </div>
                 <Button
                   onClick={runPipeline}
                   disabled={isProcessing}
