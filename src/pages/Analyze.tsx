@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import VideoUploader from "@/components/VideoUploader";
 import PipelineStatus from "@/components/PipelineStatus";
 import SkeletonCanvas from "@/components/SkeletonCanvas";
+import useVideoCalibration from "@/components/VideoCalibration";
 import ResultsDashboard from "@/components/ResultsDashboard";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -55,6 +56,12 @@ const Analyze: React.FC = () => {
   const [currentFrame, setCurrentFrame] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const animRef = useRef<number>(0);
+
+  const calibration = useVideoCalibration({
+    videoWidth: videoDimensions.width,
+    videoHeight: videoDimensions.height,
+    onCalibrated: (fw) => setFieldWidthMeters(fw.toFixed(2)),
+  });
 
   const updateStage = useCallback((id: string, updates: Partial<PipelineStage>) => {
     setStages((prev) => prev.map((s) => (s.id === id ? { ...s, ...updates } : s)));
@@ -260,21 +267,25 @@ const Analyze: React.FC = () => {
                 </div>
                 <div className="space-y-1 flex-1 min-w-[12rem]">
                   <Label className="text-xs font-mono text-muted-foreground">
-                    Field width (m), optional
+                    Field width (m)
                   </Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    placeholder="e.g. 10 (known span across frame)"
-                    value={fieldWidthMeters}
-                    onChange={(e) => setFieldWidthMeters(e.target.value)}
-                    className="h-8 text-sm font-mono"
-                    disabled={isProcessing}
-                  />
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      placeholder="e.g. 10"
+                      value={fieldWidthMeters}
+                      onChange={(e) => setFieldWidthMeters(e.target.value)}
+                      className="h-8 text-sm font-mono flex-1"
+                      disabled={isProcessing}
+                    />
+                    {!calibration.isCalibrating && calibration.triggerButton}
+                  </div>
+                  {calibration.controls}
                   <p className="text-[10px] font-mono text-muted-foreground">
-                    Calibrate meters using a known horizontal distance across the full frame width
-                    (track lines). Leave empty for automatic scale from limb ratios.
+                    Enter manually, or click "Calibrate" to measure from two points on the video.
+                    Leave empty for automatic scale from limb ratios.
                   </p>
                 </div>
                 <div className="flex items-center gap-2 pt-5">
@@ -370,6 +381,7 @@ const Analyze: React.FC = () => {
                     height={videoDimensions.height}
                     showLabels
                   />
+                  {calibration.overlay}
                 </div>
 
                 {/* Playback controls */}
