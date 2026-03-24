@@ -166,7 +166,8 @@ const Analyze: React.FC = () => {
   useEffect(() => {
     if (!isPlaying || filteredLandmarks.length === 0) return;
     let lastTime = performance.now();
-    const interval = 1000 / fps;
+    const playbackDuration = 2000; // 2 seconds
+    const interval = playbackDuration / filteredLandmarks.length;
 
     const tick = (now: number) => {
       if (now - lastTime >= interval) {
