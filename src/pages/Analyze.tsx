@@ -283,7 +283,8 @@ const Analyze: React.FC = () => {
                     {!calibration.isCalibrating && calibration.triggerButton}
                   </div>
                   {calibration.controls}
-                    Enter manually, or click "Calibrate from video" to measure from two points.
+                  <p className="text-[10px] font-mono text-muted-foreground">
+                    Enter manually, or click "Calibrate" to measure from two points on the video.
                     Leave empty for automatic scale from limb ratios.
                   </p>
                 </div>
