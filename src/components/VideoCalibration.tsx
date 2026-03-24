@@ -1,8 +1,8 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Crosshair, Check, X, Ruler } from "lucide-react";
+import { Check, X, Ruler } from "lucide-react";
 
 interface Point {
   x: number; // fraction 0–1
@@ -10,26 +10,31 @@ interface Point {
 }
 
 interface VideoCalibrationProps {
-  videoElement: HTMLVideoElement | null;
   videoWidth: number;
   videoHeight: number;
   onCalibrated: (fieldWidthMeters: number) => void;
   disabled?: boolean;
 }
 
-const VideoCalibration: React.FC<VideoCalibrationProps> = ({
-  videoElement,
+/**
+ * Provides a "Calibrate from video" button.
+ * When active, renders an overlay (via `renderOverlay`) that the parent places
+ * inside the video's relative container.
+ */
+export function useVideoCalibration({
   videoWidth,
   videoHeight,
   onCalibrated,
-  disabled,
-}) => {
+}: {
+  videoWidth: number;
+  videoHeight: number;
+  onCalibrated: (fieldWidthMeters: number) => void;
+}) {
   const [isCalibrating, setIsCalibrating] = useState(false);
   const [points, setPoints] = useState<Point[]>([]);
   const [distance, setDistance] = useState("");
-  const overlayRef = useRef<HTMLDivElement>(null);
 
-  const handleClick = useCallback(
+  const handleOverlayClick = useCallback(
     (e: React.MouseEvent<HTMLDivElement>) => {
       if (!isCalibrating || points.length >= 2) return;
       const rect = e.currentTarget.getBoundingClientRect();
@@ -50,7 +55,6 @@ const VideoCalibration: React.FC<VideoCalibrationProps> = ({
   const apply = () => {
     const realDist = parseFloat(distance);
     if (!realDist || realDist <= 0 || pixelDistance === 0) return;
-    // scale = meters per pixel, field width = scale * videoWidth
     const scale = realDist / pixelDistance;
     const fieldWidth = scale * videoWidth;
     onCalibrated(fieldWidth);
@@ -63,68 +67,52 @@ const VideoCalibration: React.FC<VideoCalibrationProps> = ({
     setDistance("");
   };
 
-  if (!isCalibrating) {
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setIsCalibrating(true)}
-        disabled={disabled || !videoElement}
-        className="gap-1.5 font-mono text-xs"
-      >
-        <Ruler className="w-3 h-3" />
-        Calibrate from video
-      </Button>
-    );
-  }
-
-  return (
-    <div className="space-y-2">
-      {/* Instruction banner */}
-      <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground bg-secondary/50 rounded px-2 py-1.5">
-        <Crosshair className="w-3 h-3 text-primary shrink-0" />
-        {points.length === 0 && "Click the first reference point on the video"}
-        {points.length === 1 && "Click the second reference point on the video"}
-        {points.length === 2 && "Enter the real-world distance between the two points"}
-      </div>
-
-      {/* Click overlay — rendered as a portal-like absolute overlay on the video */}
-      <div
-        ref={overlayRef}
-        onClick={handleClick}
-        className="absolute inset-0 z-30"
-        style={{ cursor: points.length < 2 ? "crosshair" : "default" }}
-      >
-        {/* Draw points */}
-        {points.map((p, i) => (
-          <div
-            key={i}
-            className="absolute w-3 h-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary border-2 border-primary-foreground shadow-md"
-            style={{ left: `${p.x * 100}%`, top: `${p.y * 100}%` }}
-          />
-        ))}
-        {/* Draw line between points */}
-        {points.length === 2 && (
-          <svg className="absolute inset-0 w-full h-full pointer-events-none">
-            <line
-              x1={`${points[0].x * 100}%`}
-              y1={`${points[0].y * 100}%`}
-              x2={`${points[1].x * 100}%`}
-              y2={`${points[1].y * 100}%`}
-              className="stroke-primary"
-              strokeWidth={2}
-              strokeDasharray="6 3"
-            />
-          </svg>
-        )}
-      </div>
-
-      {/* Distance input + confirm */}
+  /** Render this inside the video's relative container */
+  const overlay = isCalibrating ? (
+    <div
+      onClick={handleOverlayClick}
+      className="absolute inset-0 z-30"
+      style={{ cursor: points.length < 2 ? "crosshair" : "default" }}
+    >
+      {points.map((p, i) => (
+        <div
+          key={i}
+          className="absolute w-3.5 h-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary border-2 border-primary-foreground shadow-lg"
+          style={{ left: `${p.x * 100}%`, top: `${p.y * 100}%` }}
+        />
+      ))}
       {points.length === 2 && (
-        <div className="flex items-end gap-2">
+        <svg className="absolute inset-0 w-full h-full pointer-events-none">
+          <line
+            x1={`${points[0].x * 100}%`}
+            y1={`${points[0].y * 100}%`}
+            x2={`${points[1].x * 100}%`}
+            y2={`${points[1].y * 100}%`}
+            className="stroke-primary"
+            strokeWidth={2}
+            strokeDasharray="6 3"
+          />
+        </svg>
+      )}
+      {/* Instruction badge */}
+      <div className="absolute top-2 left-2 right-2 flex justify-center pointer-events-none">
+        <span className="bg-background/90 backdrop-blur-sm text-foreground text-[10px] font-mono px-2 py-1 rounded shadow">
+          {points.length === 0 && "Click first reference point"}
+          {points.length === 1 && "Click second reference point"}
+          {points.length === 2 && "Enter distance below"}
+        </span>
+      </div>
+    </div>
+  ) : null;
+
+  /** Render this in the controls area */
+  const controls = isCalibrating ? (
+    <div className="flex flex-wrap items-end gap-2">
+      {points.length === 2 ? (
+        <>
           <div className="space-y-1">
             <Label className="text-[10px] font-mono text-muted-foreground">
-              Distance between points (m)
+              Real distance (m)
             </Label>
             <Input
               type="number"
@@ -137,29 +125,40 @@ const VideoCalibration: React.FC<VideoCalibrationProps> = ({
               autoFocus
             />
           </div>
-          <p className="text-[10px] font-mono text-muted-foreground pb-1">
-            {pixelDistance.toFixed(0)} px span →{" "}
+          <p className="text-[10px] font-mono text-muted-foreground pb-1.5 max-w-[12rem]">
+            {pixelDistance.toFixed(0)} px →{" "}
             {distance && parseFloat(distance) > 0
-              ? `${((parseFloat(distance) / pixelDistance) * videoWidth).toFixed(2)} m field width`
+              ? `${((parseFloat(distance) / pixelDistance) * videoWidth).toFixed(2)} m field`
               : "…"}
           </p>
           <Button size="sm" className="h-7 gap-1 text-xs font-mono" onClick={apply} disabled={!distance || parseFloat(distance) <= 0}>
             <Check className="w-3 h-3" /> Apply
           </Button>
-          <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs font-mono" onClick={reset}>
-            <X className="w-3 h-3" /> Cancel
-          </Button>
-        </div>
+        </>
+      ) : (
+        <p className="text-[10px] font-mono text-muted-foreground animate-pulse">
+          Mark {2 - points.length} point{points.length === 0 ? "s" : ""} on the video…
+        </p>
       )}
-
-      {/* Cancel when still picking points */}
-      {points.length < 2 && (
-        <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs font-mono" onClick={reset}>
-          <X className="w-3 h-3" /> Cancel
-        </Button>
-      )}
+      <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs font-mono" onClick={reset}>
+        <X className="w-3 h-3" /> Cancel
+      </Button>
     </div>
-  );
-};
+  ) : null;
 
-export default VideoCalibration;
+  const triggerButton = (
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => setIsCalibrating(true)}
+      className="gap-1.5 font-mono text-xs shrink-0"
+    >
+      <Ruler className="w-3 h-3" />
+      Calibrate
+    </Button>
+  );
+
+  return { isCalibrating, overlay, controls, triggerButton };
+}
+
+export default useVideoCalibration;
