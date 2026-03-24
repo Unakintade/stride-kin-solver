@@ -68,7 +68,7 @@ export async function solveMuJoCo(
   onProgress?.(0.05);
 
   const payload = {
-    landmarks: landmarks.map((lm) => ({
+    landmarks_sequence: landmarks.map((lm) => ({
       frameIdx: lm.frameIdx,
       timestamp: lm.timestamp,
       worldPositions: lm.worldPositions,
