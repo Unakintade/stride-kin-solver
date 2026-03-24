@@ -474,7 +474,14 @@ const Analyze: React.FC = () => {
 
             {/* Results dashboard */}
             {results.length > 0 && (
-              <ResultsDashboard results={results} anthropometry={anthropometry} />
+              <>
+                <ResultsDashboard results={results} anthropometry={anthropometry} />
+                <MuJoCoPanel
+                  filteredLandmarks={filteredLandmarks}
+                  fps={fps}
+                  anthropometry={anthropometry}
+                />
+              </>
             )}
           </>
         )}
