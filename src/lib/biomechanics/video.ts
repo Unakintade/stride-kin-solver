@@ -4,10 +4,10 @@
  */
 export async function inferVideoFrameRate(video: HTMLVideoElement): Promise<number | null> {
   try {
-    if (typeof video.captureStream !== "function") return null;
+    if (typeof (video as any).captureStream !== "function") return null;
     if (video.readyState < HTMLMediaElement.HAVE_METADATA) return null;
 
-    const stream = video.captureStream();
+    const stream = (video as any).captureStream();
     const track = stream.getVideoTracks()[0];
     if (!track?.getSettings) return null;
 

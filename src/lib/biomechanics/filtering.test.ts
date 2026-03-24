@@ -31,7 +31,7 @@ describe("smoothLandmarks", () => {
     }
     const out = smoothLandmarks(frames, 30, undefined, { useRtsSmoother: true });
     expect(out).toHaveLength(15);
-    expect(out[7].worldPositions[11][2]).toBeFinite();
+    expect(Number.isFinite(out[7].worldPositions[11][2])).toBe(true);
   });
 
   it("forward-only mode matches length", () => {

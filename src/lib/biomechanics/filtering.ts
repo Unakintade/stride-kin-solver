@@ -114,7 +114,8 @@ function predictNextFromFiltered(
   F: Mat3,
   Q: Mat3
 ): { xNext: Vec3; PNext: Mat3 } {
-  return caPredict(xFilt, PFilt, F, Q);
+  const { xPred, PPred } = caPredict(xFilt, PFilt, F, Q);
+  return { xNext: xPred, PNext: PPred };
 }
 
 /**
