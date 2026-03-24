@@ -280,15 +280,9 @@ const Analyze: React.FC = () => {
                       className="h-8 text-sm font-mono flex-1"
                       disabled={isProcessing}
                     />
-                    <VideoCalibration
-                      videoElement={videoRef.current}
-                      videoWidth={videoDimensions.width}
-                      videoHeight={videoDimensions.height}
-                      onCalibrated={(fw) => setFieldWidthMeters(fw.toFixed(2))}
-                      disabled={isProcessing}
-                    />
+                    {!calibration.isCalibrating && calibration.triggerButton}
                   </div>
-                  <p className="text-[10px] font-mono text-muted-foreground">
+                  {calibration.controls}
                     Enter manually, or click "Calibrate from video" to measure from two points.
                     Leave empty for automatic scale from limb ratios.
                   </p>
