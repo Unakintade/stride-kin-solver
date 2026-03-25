@@ -164,6 +164,7 @@ const Analyze: React.FC = () => {
                   videoHeightPx: video.videoHeight,
                 }
               : null,
+          homography: homographyMatrix,
         }
       );
       setResults(kinResults);
