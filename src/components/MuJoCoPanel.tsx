@@ -20,6 +20,7 @@ interface Props {
   anthropometry?: Record<string, number>;
   weightKg?: number;
   heightCm?: number;
+  onSolveComplete?: (response: MuJoCoSolveResponse) => void;
 }
 
 const MuJoCoPanel: React.FC<Props> = ({
