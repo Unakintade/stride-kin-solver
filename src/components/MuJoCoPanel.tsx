@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Download, Server, Loader2, AlertTriangle, Zap } from "lucide-react";
+import { Download, Server, Loader2, AlertTriangle, Zap, ChevronDown, ChevronUp, Bug } from "lucide-react";
 import type { FrameLandmarks } from "@/lib/biomechanics/types";
 import {
   checkMuJoCoHealth,
@@ -38,8 +38,8 @@ const MuJoCoPanel: React.FC<Props> = ({
   const [progress, setProgress] = useState(0);
   const [response, setResponse] = useState<MuJoCoSolveResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showRawResponse, setShowRawResponse] = useState(false);
 
-  // Check health on mount and URL change
   useEffect(() => {
     setIsOnline(null);
     checkMuJoCoHealth().then(setIsOnline);
@@ -55,6 +55,7 @@ const MuJoCoPanel: React.FC<Props> = ({
     setIsSolving(true);
     setError(null);
     setProgress(0);
+    setResponse(null);
     try {
       const result = await solveMuJoCo(
         landmarks, safeFps, anthropometry, setProgress, weightKg, heightCm
@@ -70,7 +71,6 @@ const MuJoCoPanel: React.FC<Props> = ({
   const handleExportCSV = () => {
     if (!response?.frames?.length) return;
     const frames = response.frames;
-
     const jointNames = Object.keys(frames[0]?.joints ?? {});
     const headers = [
       "timestamp", "frame_idx",
@@ -81,7 +81,6 @@ const MuJoCoPanel: React.FC<Props> = ({
       "grf_right_x", "grf_right_y", "grf_right_z",
       "residual_m",
     ];
-
     const rows = frames.map((f) => [
       f.timestamp, f.frame_idx,
       ...jointNames.flatMap((jn) => {
@@ -94,7 +93,6 @@ const MuJoCoPanel: React.FC<Props> = ({
       ...(f.grf_right ?? [0, 0, 0]),
       f.residual_error ?? 0,
     ]);
-
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -165,7 +163,7 @@ const MuJoCoPanel: React.FC<Props> = ({
           </Button>
           {frames.length > 0 && (
             <Button size="sm" variant="outline" onClick={handleExportCSV} className="gap-1.5 font-mono text-xs">
-              <Download className="w-3.5 h-3.5" /> Export Kinetics CSV
+              <Download className="w-3.5 h-3.5" /> Export CSV
             </Button>
           )}
         </div>
@@ -183,9 +181,9 @@ const MuJoCoPanel: React.FC<Props> = ({
         {/* Error */}
         {error && (
           <div className="bg-destructive/10 border border-destructive/20 rounded p-3">
-            <p className="text-xs font-mono text-destructive flex items-center gap-2">
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
-              {error}
+            <p className="text-xs font-mono text-destructive flex items-start gap-2">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span className="break-all whitespace-pre-wrap">{error}</span>
             </p>
           </div>
         )}
@@ -193,12 +191,11 @@ const MuJoCoPanel: React.FC<Props> = ({
         {/* Summary */}
         {summary && (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
                 { label: "Frames", value: summary.total_frames },
                 { label: "Solve Time", value: `${summary.solve_time_s}s` },
                 { label: "Mean Residual", value: `${((summary.mean_residual_m ?? 0) * 100).toFixed(1)} cm` },
-                { label: "Max Residual", value: `${((summary.max_residual_m ?? 0) * 100).toFixed(1)} cm` },
                 { label: "Warnings", value: summary.total_warnings },
               ].map((s, i) => (
                 <div key={i} className="bg-secondary rounded-md p-3">
@@ -209,21 +206,44 @@ const MuJoCoPanel: React.FC<Props> = ({
             </div>
 
             {/* Sample frame data */}
-            {firstFrame?.joints && (
+            {firstFrame?.joints && Object.keys(firstFrame.joints).length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-mono text-muted-foreground">
-                  Joint Torques (frame 0):
+                  Joint data (frame 0):
                 </p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {Object.entries(firstFrame.joints).slice(0, 8).map(([name, j]) => (
                     <div key={name} className="bg-secondary rounded p-2">
                       <p className="text-[9px] font-mono text-muted-foreground truncate">{name}</p>
-                      <p className="text-sm font-semibold text-foreground">{(j?.torque_nm ?? 0).toFixed(1)} Nm</p>
-                      <p className="text-[9px] font-mono text-primary/70">{(j?.velocity_rad_s ?? 0).toFixed(2)} rad/s</p>
+                      <p className="text-sm font-semibold text-foreground">{(j?.angle_deg ?? 0).toFixed(1)}°</p>
+                      {(j?.torque_nm ?? 0) !== 0 && (
+                        <p className="text-[9px] font-mono text-primary/70">{j.torque_nm.toFixed(1)} Nm</p>
+                      )}
                     </div>
                   ))}
                 </div>
               </div>
+            )}
+          </div>
+        )}
+
+        {/* Raw response viewer */}
+        {response?._raw && (
+          <div className="space-y-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowRawResponse(!showRawResponse)}
+              className="gap-1.5 font-mono text-xs text-muted-foreground h-7 px-2"
+            >
+              <Bug className="w-3.5 h-3.5" />
+              Raw Backend Response
+              {showRawResponse ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </Button>
+            {showRawResponse && (
+              <pre className="bg-secondary rounded p-3 text-[10px] font-mono text-foreground overflow-auto max-h-64 whitespace-pre-wrap break-all">
+                {JSON.stringify(response._raw, null, 2)}
+              </pre>
             )}
           </div>
         )}

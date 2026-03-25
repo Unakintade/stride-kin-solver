@@ -1,7 +1,6 @@
 /**
  * Client for the MuJoCo physics backend.
- * Sends smoothed landmarks and receives enriched kinetic data
- * (joint torques, GRFs, CoM) from mj_inverse.
+ * Sends smoothed landmarks and receives enriched kinetic data.
  */
 
 import type { FrameLandmarks } from "./types";
@@ -34,6 +33,8 @@ export interface MuJoCoSolveResponse {
     total_warnings: number;
     fps: number;
   };
+  /** Raw JSON from the backend, always preserved for debugging */
+  _raw: Record<string, unknown>;
 }
 
 const DEFAULT_BACKEND_URL = "https://biomech-worker.onrender.com";
@@ -55,6 +56,66 @@ export async function checkMuJoCoHealth(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * Normalise whatever the backend returns into MuJoCoSolveResponse.
+ * If the response already has `frames`, use it directly.
+ * If it has `joint_angles` / `vertical_forces` (flat array format), convert.
+ */
+function normaliseResponse(raw: Record<string, unknown>): MuJoCoSolveResponse {
+  // Already in the expected format
+  if (Array.isArray(raw.frames)) {
+    return {
+      frames: raw.frames as MuJoCoFrameResult[],
+      summary: (raw.summary ?? {
+        total_frames: (raw.frames as unknown[]).length,
+        solve_time_s: 0,
+        mean_residual_m: 0,
+        max_residual_m: 0,
+        total_warnings: 0,
+        fps: 0,
+      }) as MuJoCoSolveResponse["summary"],
+      _raw: raw,
+    };
+  }
+
+  // Flat-array format from backend: { joint_angles: number[], vertical_forces: number[], summary: {...} }
+  const jointAngles = (raw.joint_angles ?? []) as number[];
+  const verticalForces = (raw.vertical_forces ?? []) as number[];
+  const rawSummary = (raw.summary ?? {}) as Record<string, unknown>;
+  const framesProcessed = Number(rawSummary.frames_processed ?? jointAngles.length ?? 0);
+
+  const frames: MuJoCoFrameResult[] = Array.from({ length: framesProcessed }, (_, i) => ({
+    timestamp: 0,
+    frame_idx: i,
+    joints: {
+      knee: {
+        angle_deg: jointAngles[i] ?? 0,
+        velocity_rad_s: 0,
+        torque_nm: 0,
+      },
+    },
+    com_position: [0, 0, 0],
+    com_velocity: [0, 0, 0],
+    grf_left: [0, 0, 0],
+    grf_right: [0, verticalForces[i] ?? 0, 0],
+    residual_error: 0,
+    warnings: [],
+  }));
+
+  return {
+    frames,
+    summary: {
+      total_frames: framesProcessed,
+      solve_time_s: 0,
+      mean_residual_m: 0,
+      max_residual_m: 0,
+      total_warnings: 0,
+      fps: 0,
+    },
+    _raw: raw,
+  };
 }
 
 export async function solveMuJoCo(
@@ -98,8 +159,8 @@ export async function solveMuJoCo(
   }
 
   onProgress?.(0.95);
-  const data: MuJoCoSolveResponse = await res.json();
+  const data = await res.json();
   onProgress?.(1.0);
 
-  return data;
+  return normaliseResponse(data);
 }
