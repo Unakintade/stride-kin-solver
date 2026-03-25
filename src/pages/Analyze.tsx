@@ -515,6 +515,12 @@ const Analyze: React.FC = () => {
                   anthropometry={anthropometry}
                   weightKg={weightKg.trim() !== "" ? Number(weightKg) : undefined}
                   heightCm={heightCm.trim() !== "" ? Number(heightCm) : undefined}
+                  onSolveComplete={setMujocoData}
+                />
+                <Skeleton3DViewer
+                  mujocoData={mujocoData}
+                  landmarks={filteredLandmarks}
+                  fps={fps}
                 />
               </>
             )}
