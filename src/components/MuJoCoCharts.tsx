@@ -80,7 +80,26 @@ const MuJoCoCharts: React.FC<Props> = ({ mujocoData, fps = 30 }) => {
       };
     }), [frames, fps]);
 
-  if (frames.length === 0) return null;
+  if (frames.length === 0) {
+    return (
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-mono text-foreground flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-primary" />
+            MuJoCo Time-Series
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-xs font-mono text-muted-foreground">
+            No frame data available. Raw response keys: {Object.keys(mujocoData._raw ?? {}).join(", ") || "none"}
+          </p>
+          <pre className="mt-2 bg-secondary rounded p-2 text-[10px] font-mono text-foreground overflow-auto max-h-32 whitespace-pre-wrap break-all">
+            {JSON.stringify(mujocoData._raw ?? mujocoData, null, 2).slice(0, 1000)}
+          </pre>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const tabs: { key: ChartTab; label: string; icon: React.ReactNode }[] = [
     { key: "angles", label: "Joint Angles", icon: <TrendingUp className="w-3 h-3" /> },
