@@ -385,6 +385,7 @@ const Analyze: React.FC = () => {
                     setFilteredLandmarks([]);
                     setResults([]);
                     setInferredFps(null);
+                    setMujocoData(null);
                     setFieldWidthMeters("");
                   }}
                   className="font-mono text-xs"
