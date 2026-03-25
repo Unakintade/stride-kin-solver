@@ -48,6 +48,8 @@ const Analyze: React.FC = () => {
   const [useRtsSmoother, setUseRtsSmoother] = useState(true);
   const [maxFrames, setMaxFrames] = useState(0); // 0 = no limit
   const [playbackDuration, setPlaybackDuration] = useState(2); // seconds
+  const [heightCm, setHeightCm] = useState("");
+  const [weightKg, setWeightKg] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [stages, setStages] = useState<PipelineStage[]>(INITIAL_STAGES);
   const [rawLandmarks, setRawLandmarks] = useState<FrameLandmarks[]>([]);
