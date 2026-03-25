@@ -434,6 +434,7 @@ const Analyze: React.FC = () => {
                     showLabels
                   />
                   {calibration.overlay}
+                  {homographyCal.overlay}
                 </div>
 
                 {/* Playback controls */}
