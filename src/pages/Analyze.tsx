@@ -296,11 +296,18 @@ const Analyze: React.FC = () => {
                       className="h-8 text-sm font-mono flex-1"
                       disabled={isProcessing}
                     />
-                    {!calibration.isCalibrating && calibration.triggerButton}
+                    {!calibration.isCalibrating && !homographyCal.isCalibrating && calibration.triggerButton}
+                    {!calibration.isCalibrating && !homographyCal.isCalibrating && homographyCal.triggerButton}
                   </div>
                   {calibration.controls}
+                  {homographyCal.controls}
+                  {homographyMatrix && (
+                    <p className="text-[10px] font-mono text-primary">
+                      ✓ Homography active — perspective correction applied
+                    </p>
+                  )}
                   <p className="text-[10px] font-mono text-muted-foreground">
-                    Enter manually, or click "Calibrate" to measure from two points on the video.
+                    Enter manually, or click "Calibrate" for 2-point scale / "Homography" for 4-point perspective correction.
                     Leave empty for automatic scale from limb ratios.
                   </p>
                 </div>
