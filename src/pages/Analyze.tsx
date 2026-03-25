@@ -510,6 +510,8 @@ const Analyze: React.FC = () => {
                   filteredLandmarks={filteredLandmarks}
                   fps={fps}
                   anthropometry={anthropometry}
+                  weightKg={weightKg.trim() !== "" ? Number(weightKg) : undefined}
+                  heightCm={heightCm.trim() !== "" ? Number(heightCm) : undefined}
                 />
               </>
             )}

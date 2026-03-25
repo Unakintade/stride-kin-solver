@@ -49,7 +49,7 @@ const MuJoCoPanel: React.FC<Props> = ({ filteredLandmarks, fps, anthropometry, w
     setProgress(0);
     try {
       const result = await solveMuJoCo(
-        filteredLandmarks, fps, anthropometry, setProgress
+        filteredLandmarks, fps, anthropometry, setProgress, weightKg, heightCm
       );
       setResponse(result);
     } catch (err: any) {
