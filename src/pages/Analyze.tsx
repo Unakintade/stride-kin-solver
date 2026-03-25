@@ -19,6 +19,7 @@ import SprintAISummary from "@/components/SprintAISummary";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { FrameLandmarks, FrameResult, PipelineStage } from "@/lib/biomechanics/types";
+import type { Mat3 } from "@/lib/biomechanics/homography";
 import type { MuJoCoSolveResponse } from "@/lib/biomechanics/mujocoApi";
 import { detectPoseInVideo } from "@/lib/biomechanics/detection";
 import { smoothLandmarks } from "@/lib/biomechanics/filtering";
