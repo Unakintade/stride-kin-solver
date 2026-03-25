@@ -63,6 +63,7 @@ export async function solveMuJoCo(
   anthropometry?: Record<string, number>,
   onProgress?: (progress: number) => void,
   weightKg?: number,
+  heightCm?: number,
 ): Promise<MuJoCoSolveResponse> {
   const url = getMuJoCoBackendUrl();
 
@@ -77,6 +78,7 @@ export async function solveMuJoCo(
     })),
     fps,
     weight_kg: weightKg ?? 75,
+    height_cm: heightCm,
     anthropometry: anthropometry && Object.keys(anthropometry).length > 0
       ? anthropometry
       : undefined,

@@ -48,6 +48,8 @@ const Analyze: React.FC = () => {
   const [useRtsSmoother, setUseRtsSmoother] = useState(true);
   const [maxFrames, setMaxFrames] = useState(0); // 0 = no limit
   const [playbackDuration, setPlaybackDuration] = useState(2); // seconds
+  const [heightCm, setHeightCm] = useState("");
+  const [weightKg, setWeightKg] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [stages, setStages] = useState<PipelineStage[]>(INITIAL_STAGES);
   const [rawLandmarks, setRawLandmarks] = useState<FrameLandmarks[]>([]);
@@ -311,6 +313,34 @@ const Analyze: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-1">
+                  <Label className="text-xs font-mono text-muted-foreground">Height (cm)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="50"
+                    max="250"
+                    placeholder="175"
+                    value={heightCm}
+                    onChange={(e) => setHeightCm(e.target.value)}
+                    className="w-24 h-8 text-sm font-mono"
+                    disabled={isProcessing}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-mono text-muted-foreground">Weight (kg)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="20"
+                    max="300"
+                    placeholder="75"
+                    value={weightKg}
+                    onChange={(e) => setWeightKg(e.target.value)}
+                    className="w-24 h-8 text-sm font-mono"
+                    disabled={isProcessing}
+                  />
+                </div>
+                <div className="space-y-1">
                   <Label className="text-xs font-mono text-muted-foreground">
                     Playback (s)
                   </Label>
@@ -480,6 +510,8 @@ const Analyze: React.FC = () => {
                   filteredLandmarks={filteredLandmarks}
                   fps={fps}
                   anthropometry={anthropometry}
+                  weightKg={weightKg.trim() !== "" ? Number(weightKg) : undefined}
+                  heightCm={heightCm.trim() !== "" ? Number(heightCm) : undefined}
                 />
               </>
             )}
