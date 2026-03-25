@@ -23,7 +23,7 @@ interface Props {
   heightCm?: number;
 }
 
-const MuJoCoPanel: React.FC<Props> = ({ filteredLandmarks, fps, anthropometry, weightKg, heightCm }) => {
+const MuJoCoPanel: React.FC<Props> = ({ filteredLandmarks = [], fps, anthropometry, weightKg, heightCm }) => {
   const [backendUrl, setBackendUrlLocal] = useState(getMuJoCoBackendUrl());
   const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const [isSolving, setIsSolving] = useState(false);
