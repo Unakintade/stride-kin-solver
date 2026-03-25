@@ -10,6 +10,7 @@ import VideoUploader from "@/components/VideoUploader";
 import PipelineStatus from "@/components/PipelineStatus";
 import SkeletonCanvas from "@/components/SkeletonCanvas";
 import useVideoCalibration from "@/components/VideoCalibration";
+import useHomographyCalibration from "@/components/HomographyCalibration";
 import ResultsDashboard from "@/components/ResultsDashboard";
 import MuJoCoPanel from "@/components/MuJoCoPanel";
 import Skeleton3DViewer from "@/components/Skeleton3DViewer";
@@ -18,6 +19,7 @@ import SprintAISummary from "@/components/SprintAISummary";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { FrameLandmarks, FrameResult, PipelineStage } from "@/lib/biomechanics/types";
+import type { Mat3 } from "@/lib/biomechanics/homography";
 import type { MuJoCoSolveResponse } from "@/lib/biomechanics/mujocoApi";
 import { detectPoseInVideo } from "@/lib/biomechanics/detection";
 import { smoothLandmarks } from "@/lib/biomechanics/filtering";
@@ -63,12 +65,17 @@ const Analyze: React.FC = () => {
   const [mujocoData, setMujocoData] = useState<MuJoCoSolveResponse | null>(null);
   const [currentFrame, setCurrentFrame] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [homographyMatrix, setHomographyMatrix] = useState<Mat3 | null>(null);
   const animRef = useRef<number>(0);
 
   const calibration = useVideoCalibration({
     videoWidth: videoDimensions.width,
     videoHeight: videoDimensions.height,
     onCalibrated: (fw) => setFieldWidthMeters(fw.toFixed(2)),
+  });
+
+  const homographyCal = useHomographyCalibration({
+    onCalibrated: (H) => setHomographyMatrix(H),
   });
 
   const updateStage = useCallback((id: string, updates: Partial<PipelineStage>) => {
@@ -157,6 +164,7 @@ const Analyze: React.FC = () => {
                   videoHeightPx: video.videoHeight,
                 }
               : null,
+          homography: homographyMatrix,
         }
       );
       setResults(kinResults);
@@ -176,7 +184,7 @@ const Analyze: React.FC = () => {
     } finally {
       setIsProcessing(false);
     }
-  }, [videoUrl, fps, maxFrames, updateStage, useRtsSmoother, fieldWidthMeters]);
+  }, [videoUrl, fps, maxFrames, updateStage, useRtsSmoother, fieldWidthMeters, homographyMatrix]);
 
   // Playback animation
   useEffect(() => {
@@ -288,11 +296,18 @@ const Analyze: React.FC = () => {
                       className="h-8 text-sm font-mono flex-1"
                       disabled={isProcessing}
                     />
-                    {!calibration.isCalibrating && calibration.triggerButton}
+                    {!calibration.isCalibrating && !homographyCal.isCalibrating && calibration.triggerButton}
+                    {!calibration.isCalibrating && !homographyCal.isCalibrating && homographyCal.triggerButton}
                   </div>
                   {calibration.controls}
+                  {homographyCal.controls}
+                  {homographyMatrix && (
+                    <p className="text-[10px] font-mono text-primary">
+                      ✓ Homography active — perspective correction applied
+                    </p>
+                  )}
                   <p className="text-[10px] font-mono text-muted-foreground">
-                    Enter manually, or click "Calibrate" to measure from two points on the video.
+                    Enter manually, or click "Calibrate" for 2-point scale / "Homography" for 4-point perspective correction.
                     Leave empty for automatic scale from limb ratios.
                   </p>
                 </div>
@@ -388,6 +403,7 @@ const Analyze: React.FC = () => {
                     setResults([]);
                     setInferredFps(null);
                     setMujocoData(null);
+                    setHomographyMatrix(null);
                     setFieldWidthMeters("");
                   }}
                   className="font-mono text-xs"
@@ -419,6 +435,7 @@ const Analyze: React.FC = () => {
                     showLabels
                   />
                   {calibration.overlay}
+                  {homographyCal.overlay}
                 </div>
 
                 {/* Playback controls */}

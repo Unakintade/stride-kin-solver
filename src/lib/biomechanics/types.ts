@@ -10,6 +10,8 @@ export interface JointAngle {
   name: string;
   angleDeg: number;
   velocityRadS: number;
+  /** Minimum visibility of the landmarks involved (0–1). Values below ~0.65 are suspect. */
+  confidence: number;
 }
 
 export interface FrameResult {

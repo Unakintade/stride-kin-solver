@@ -1,5 +1,7 @@
 import type { FrameLandmarks, FrameResult, JointAngle } from "./types";
 import { LIMB_SEGMENTS, JOINT_VELOCITY_LIMITS } from "./constants";
+import { landmarksVisible, minVisibility, interpolateGatedAngles, DEFAULT_VISIBILITY_THRESHOLD } from "./visibility";
+import { type Mat3, applyHomography } from "./homography";
 
 /** Calibrate normalized image coordinates to meters using a known horizontal span (e.g. track markings). */
 export interface MetricCalibrationInput {
@@ -11,6 +13,10 @@ export interface MetricCalibrationInput {
 
 export interface ComputeKinematicsOptions {
   metricCalibration?: MetricCalibrationInput | null;
+  /** 3×3 homography matrix mapping normalised image coords to ground-plane metres. */
+  homography?: Mat3 | null;
+  /** Minimum landmark visibility to trust a joint angle (default 0.65). */
+  visibilityThreshold?: number;
 }
 
 /**
@@ -132,6 +138,18 @@ function computeStrideLengths(
   scaleX: number,
   scaleY: number
 ): Map<number, number> {
+  return computeStrideLengthsH(landmarks, heelStrikes, (x, y) => [x * scaleX, y * scaleY]);
+}
+
+/**
+ * Compute stride lengths using an arbitrary image→metre mapping function
+ * (supports both simple scaling and homography).
+ */
+function computeStrideLengthsH(
+  landmarks: FrameLandmarks[],
+  heelStrikes: { left: number[]; right: number[] },
+  toMetric: (x: number, y: number) => [number, number]
+): Map<number, number> {
   const strideLengthMap = new Map<number, number>();
 
   function processStrikes(strikes: number[]) {
@@ -139,23 +157,19 @@ function computeStrideLengths(
       const startFrame = strikes[s - 1];
       const endFrame = strikes[s];
 
-      // Compute cumulative hip displacement between consecutive strikes
       let totalDisplacement = 0;
       for (let f = startFrame + 1; f <= endFrame; f++) {
         const prevHipX = (landmarks[f - 1].positions[23][0] + landmarks[f - 1].positions[24][0]) / 2;
         const prevHipY = (landmarks[f - 1].positions[23][1] + landmarks[f - 1].positions[24][1]) / 2;
         const currHipX = (landmarks[f].positions[23][0] + landmarks[f].positions[24][0]) / 2;
         const currHipY = (landmarks[f].positions[23][1] + landmarks[f].positions[24][1]) / 2;
-        const dx = currHipX - prevHipX;
-        const dy = currHipY - prevHipY;
-        totalDisplacement += Math.sqrt((dx * scaleX) ** 2 + (dy * scaleY) ** 2);
+        const [px, py] = toMetric(prevHipX, prevHipY);
+        const [cx, cy] = toMetric(currHipX, currHipY);
+        totalDisplacement += Math.sqrt((cx - px) ** 2 + (cy - py) ** 2);
       }
 
-      const strideMeters = totalDisplacement;
-
-      // Assign this stride length to all frames in the stride
       for (let f = startFrame; f <= endFrame; f++) {
-        strideLengthMap.set(f, strideMeters);
+        strideLengthMap.set(f, totalDisplacement);
       }
     }
   }
@@ -177,11 +191,17 @@ export function computeKinematics(
 ): FrameResult[] {
   const results: FrameResult[] = [];
   const dt = 1 / fps;
+  const visThresh = options?.visibilityThreshold ?? DEFAULT_VISIBILITY_THRESHOLD;
+  const H = options?.homography ?? null;
 
   const cal = options?.metricCalibration;
   let scaleX: number;
   let scaleY: number;
-  if (
+  // When a homography is supplied, image coords are mapped directly to metres — no scale needed.
+  if (H) {
+    scaleX = 1;
+    scaleY = 1;
+  } else if (
     cal &&
     cal.fieldWidthMeters > 0 &&
     cal.videoWidthPx > 0 &&
@@ -195,26 +215,54 @@ export function computeKinematics(
     scaleY = scale;
   }
 
+  // Helper: map an image-space point to ground-plane metres
+  function toMetric(imgX: number, imgY: number): [number, number] {
+    if (H) return applyHomography(H, imgX, imgY);
+    return [imgX * scaleX, imgY * scaleY];
+  }
+
   // Detect gait events for stride computation
   const heelStrikes = detectHeelStrikes(landmarks, fps);
-  const strideLengthMap = computeStrideLengths(landmarks, heelStrikes, scaleX, scaleY);
+  const strideLengthMap = computeStrideLengthsH(landmarks, heelStrikes, toMetric);
+
+  // First pass: compute raw angles (or null if gated)
+  const rawAnglesPerJoint: (number | null)[][] = JOINT_DEFINITIONS.map(() => []);
 
   for (let i = 0; i < landmarks.length; i++) {
     const fl = landmarks[i];
     const wp = fl.worldPositions;
+
+    for (let j = 0; j < JOINT_DEFINITIONS.length; j++) {
+      const jd = JOINT_DEFINITIONS[j];
+      const vis = landmarksVisible(fl, jd.landmarks, visThresh);
+      if (vis) {
+        rawAnglesPerJoint[j].push(
+          angleBetween(wp[jd.landmarks[0]], wp[jd.landmarks[1]], wp[jd.landmarks[2]])
+        );
+      } else {
+        rawAnglesPerJoint[j].push(null);
+      }
+    }
+  }
+
+  // Interpolate gated frames per joint
+  const interpAngles: number[][] = rawAnglesPerJoint.map((series) =>
+    interpolateGatedAngles(series)
+  );
+
+  for (let i = 0; i < landmarks.length; i++) {
+    const fl = landmarks[i];
     const ip = fl.positions;
+    const wp = fl.worldPositions;
     const warnings: string[] = [];
 
-    // Joint angles (use world positions for angular measurements — they're accurate)
-    const jointAngles: JointAngle[] = JOINT_DEFINITIONS.map((jd) => {
-      const angle = angleBetween(wp[jd.landmarks[0]], wp[jd.landmarks[1]], wp[jd.landmarks[2]]);
+    const jointAngles: JointAngle[] = JOINT_DEFINITIONS.map((jd, j) => {
+      const angle = interpAngles[j][i];
+      const conf = minVisibility(fl, jd.landmarks);
 
       let velocity = 0;
       if (i > 0) {
-        const prevWp = landmarks[i - 1].worldPositions;
-        const prevAngle = angleBetween(
-          prevWp[jd.landmarks[0]], prevWp[jd.landmarks[1]], prevWp[jd.landmarks[2]]
-        );
+        const prevAngle = interpAngles[j][i - 1];
         velocity = ((angle - prevAngle) * Math.PI) / (180 * dt);
 
         const limit = JOINT_VELOCITY_LIMITS[jd.limitKey] ?? JOINT_VELOCITY_LIMITS.default;
@@ -225,25 +273,25 @@ export function computeKinematics(
         }
       }
 
-      return { name: jd.name, angleDeg: angle, velocityRadS: velocity };
+      if (conf < visThresh) {
+        warnings.push(`${jd.name}: low visibility (${(conf * 100).toFixed(0)}%) — interpolated`);
+      }
+
+      return { name: jd.name, angleDeg: angle, velocityRadS: velocity, confidence: conf };
     });
 
     // Stride length from gait events (or 0 if no stride detected yet)
     const strideLength = strideLengthMap.get(i) ?? 0;
 
-    // CoM position from image-space hip midpoint, scaled to meters
+    // CoM position — use homography if available, otherwise scale
     const comImageX = (ip[23][0] + ip[24][0]) / 2;
     const comImageY = (ip[23][1] + ip[24][1]) / 2;
-    // World Z (depth) from world positions is still useful for the depth axis
+    const [comX, comY] = toMetric(comImageX, comImageY);
     const comWorldZ = (wp[23][2] + wp[24][2]) / 2;
 
-    const comPosition: [number, number, number] = [
-      comImageX * scaleX,
-      comImageY * scaleY,
-      comWorldZ,
-    ];
+    const comPosition: [number, number, number] = [comX, comY, comWorldZ];
 
-    // CoM velocity via finite difference on scaled image positions
+    // CoM velocity via finite difference
     let comVelocity: [number, number, number] = [0, 0, 0];
     if (i > 0) {
       const prev = results[i - 1];
