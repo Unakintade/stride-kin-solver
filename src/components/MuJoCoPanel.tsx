@@ -29,6 +29,7 @@ const MuJoCoPanel: React.FC<Props> = ({
   anthropometry,
   weightKg,
   heightCm,
+  onSolveComplete,
 }) => {
   const landmarks = filteredLandmarks ?? [];
   const safeFps = fps ?? 30;
