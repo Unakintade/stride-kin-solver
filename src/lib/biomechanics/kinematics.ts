@@ -138,6 +138,18 @@ function computeStrideLengths(
   scaleX: number,
   scaleY: number
 ): Map<number, number> {
+  return computeStrideLengthsH(landmarks, heelStrikes, (x, y) => [x * scaleX, y * scaleY]);
+}
+
+/**
+ * Compute stride lengths using an arbitrary image→metre mapping function
+ * (supports both simple scaling and homography).
+ */
+function computeStrideLengthsH(
+  landmarks: FrameLandmarks[],
+  heelStrikes: { left: number[]; right: number[] },
+  toMetric: (x: number, y: number) => [number, number]
+): Map<number, number> {
   const strideLengthMap = new Map<number, number>();
 
   function processStrikes(strikes: number[]) {
@@ -145,23 +157,19 @@ function computeStrideLengths(
       const startFrame = strikes[s - 1];
       const endFrame = strikes[s];
 
-      // Compute cumulative hip displacement between consecutive strikes
       let totalDisplacement = 0;
       for (let f = startFrame + 1; f <= endFrame; f++) {
         const prevHipX = (landmarks[f - 1].positions[23][0] + landmarks[f - 1].positions[24][0]) / 2;
         const prevHipY = (landmarks[f - 1].positions[23][1] + landmarks[f - 1].positions[24][1]) / 2;
         const currHipX = (landmarks[f].positions[23][0] + landmarks[f].positions[24][0]) / 2;
         const currHipY = (landmarks[f].positions[23][1] + landmarks[f].positions[24][1]) / 2;
-        const dx = currHipX - prevHipX;
-        const dy = currHipY - prevHipY;
-        totalDisplacement += Math.sqrt((dx * scaleX) ** 2 + (dy * scaleY) ** 2);
+        const [px, py] = toMetric(prevHipX, prevHipY);
+        const [cx, cy] = toMetric(currHipX, currHipY);
+        totalDisplacement += Math.sqrt((cx - px) ** 2 + (cy - py) ** 2);
       }
 
-      const strideMeters = totalDisplacement;
-
-      // Assign this stride length to all frames in the stride
       for (let f = startFrame; f <= endFrame; f++) {
-        strideLengthMap.set(f, strideMeters);
+        strideLengthMap.set(f, totalDisplacement);
       }
     }
   }
