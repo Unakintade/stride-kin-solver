@@ -184,7 +184,7 @@ const Analyze: React.FC = () => {
     } finally {
       setIsProcessing(false);
     }
-  }, [videoUrl, fps, maxFrames, updateStage, useRtsSmoother, fieldWidthMeters]);
+  }, [videoUrl, fps, maxFrames, updateStage, useRtsSmoother, fieldWidthMeters, homographyMatrix]);
 
   // Playback animation
   useEffect(() => {
