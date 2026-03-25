@@ -58,6 +58,7 @@ const Analyze: React.FC = () => {
   const [filteredLandmarks, setFilteredLandmarks] = useState<FrameLandmarks[]>([]);
   const [results, setResults] = useState<FrameResult[]>([]);
   const [anthropometry, setAnthropometry] = useState<Record<string, number>>({});
+  const [mujocoData, setMujocoData] = useState<MuJoCoSolveResponse | null>(null);
   const [currentFrame, setCurrentFrame] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const animRef = useRef<number>(0);
