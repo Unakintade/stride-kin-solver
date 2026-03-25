@@ -12,9 +12,11 @@ import SkeletonCanvas from "@/components/SkeletonCanvas";
 import useVideoCalibration from "@/components/VideoCalibration";
 import ResultsDashboard from "@/components/ResultsDashboard";
 import MuJoCoPanel from "@/components/MuJoCoPanel";
+import Skeleton3DViewer from "@/components/Skeleton3DViewer";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { FrameLandmarks, FrameResult, PipelineStage } from "@/lib/biomechanics/types";
+import type { MuJoCoSolveResponse } from "@/lib/biomechanics/mujocoApi";
 import { detectPoseInVideo } from "@/lib/biomechanics/detection";
 import { smoothLandmarks } from "@/lib/biomechanics/filtering";
 import { computeKinematics, computeAnthropometry } from "@/lib/biomechanics/kinematics";
@@ -56,6 +58,7 @@ const Analyze: React.FC = () => {
   const [filteredLandmarks, setFilteredLandmarks] = useState<FrameLandmarks[]>([]);
   const [results, setResults] = useState<FrameResult[]>([]);
   const [anthropometry, setAnthropometry] = useState<Record<string, number>>({});
+  const [mujocoData, setMujocoData] = useState<MuJoCoSolveResponse | null>(null);
   const [currentFrame, setCurrentFrame] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const animRef = useRef<number>(0);
@@ -382,6 +385,7 @@ const Analyze: React.FC = () => {
                     setFilteredLandmarks([]);
                     setResults([]);
                     setInferredFps(null);
+                    setMujocoData(null);
                     setFieldWidthMeters("");
                   }}
                   className="font-mono text-xs"
@@ -512,6 +516,12 @@ const Analyze: React.FC = () => {
                   anthropometry={anthropometry}
                   weightKg={weightKg.trim() !== "" ? Number(weightKg) : undefined}
                   heightCm={heightCm.trim() !== "" ? Number(heightCm) : undefined}
+                  onSolveComplete={setMujocoData}
+                />
+                <Skeleton3DViewer
+                  mujocoData={mujocoData}
+                  landmarks={filteredLandmarks}
+                  fps={fps}
                 />
               </>
             )}
