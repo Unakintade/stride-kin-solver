@@ -12,6 +12,7 @@ import SkeletonCanvas from "@/components/SkeletonCanvas";
 import useVideoCalibration from "@/components/VideoCalibration";
 import ResultsDashboard from "@/components/ResultsDashboard";
 import MuJoCoPanel from "@/components/MuJoCoPanel";
+import Skeleton3DViewer from "@/components/Skeleton3DViewer";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { FrameLandmarks, FrameResult, PipelineStage } from "@/lib/biomechanics/types";

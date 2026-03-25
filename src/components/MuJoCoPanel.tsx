@@ -63,6 +63,7 @@ const MuJoCoPanel: React.FC<Props> = ({
         landmarks, safeFps, anthropometry, setProgress, weightKg, heightCm
       );
       setResponse(result);
+      onSolveComplete?.(result);
     } catch (err: any) {
       setError(err.message || "Unknown error");
     } finally {
