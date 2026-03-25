@@ -403,6 +403,7 @@ const Analyze: React.FC = () => {
                     setResults([]);
                     setInferredFps(null);
                     setMujocoData(null);
+                    setHomographyMatrix(null);
                     setFieldWidthMeters("");
                   }}
                   className="font-mono text-xs"
