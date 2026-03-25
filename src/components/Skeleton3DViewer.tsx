@@ -139,23 +139,24 @@ function SkeletonScene({ landmarks, mujocoFrame, showIMU }: {
   mujocoFrame: MuJoCoFrameResult | null;
   showIMU: boolean;
 }) {
-  if (!landmarks) return null;
-
-  const wp = landmarks.worldPositions;
-  if (!wp || wp.length < 33) return null;
+  const wp = landmarks?.worldPositions;
+  const hasData = !!wp && wp.length >= 33;
 
   // Convert MediaPipe world coords to three.js (swap Y/Z for upright)
   const positions = useMemo(() => {
-    return wp.map((p) => [p[0], -p[1], -p[2]] as [number, number, number]);
-  }, [wp]);
+    if (!hasData) return [];
+    return wp!.map((p) => [p[0], -p[1], -p[2]] as [number, number, number]);
+  }, [wp, hasData]);
 
   // Find ground level (lowest Y)
   const groundY = useMemo(() => {
+    if (positions.length === 0) return 0;
     return Math.min(...positions.map(p => p[1]));
   }, [positions]);
 
   // Shift everything so feet are on ground
   const shiftedPositions = useMemo(() => {
+    if (positions.length === 0) return [];
     const offset = groundY - GROUND_PLANE_Y;
     return positions.map(p => [p[0], p[1] - offset, p[2]] as [number, number, number]);
   }, [positions, groundY]);
@@ -174,6 +175,8 @@ function SkeletonScene({ landmarks, mujocoFrame, showIMU }: {
       .filter(name => name in nameToIdx)
       .map(name => ({ name, idx: nameToIdx[name] }));
   }, [mujocoFrame]);
+
+  if (!hasData) return null;
 
   return (
     <group>
