@@ -10,6 +10,7 @@ import VideoUploader from "@/components/VideoUploader";
 import PipelineStatus from "@/components/PipelineStatus";
 import SkeletonCanvas from "@/components/SkeletonCanvas";
 import useVideoCalibration from "@/components/VideoCalibration";
+import useHomographyCalibration from "@/components/HomographyCalibration";
 import ResultsDashboard from "@/components/ResultsDashboard";
 import MuJoCoPanel from "@/components/MuJoCoPanel";
 import Skeleton3DViewer from "@/components/Skeleton3DViewer";
