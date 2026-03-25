@@ -1,0 +1,4 @@
+project_id = "aupxgzceshhlyimzmyio"
+
+[functions.sprint-analysis]
+verify_jwt = false
