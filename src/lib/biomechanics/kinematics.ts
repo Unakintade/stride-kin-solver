@@ -1,5 +1,7 @@
 import type { FrameLandmarks, FrameResult, JointAngle } from "./types";
 import { LIMB_SEGMENTS, JOINT_VELOCITY_LIMITS } from "./constants";
+import { landmarksVisible, minVisibility, interpolateGatedAngles, DEFAULT_VISIBILITY_THRESHOLD } from "./visibility";
+import { type Mat3, applyHomography } from "./homography";
 
 /** Calibrate normalized image coordinates to meters using a known horizontal span (e.g. track markings). */
 export interface MetricCalibrationInput {
@@ -11,6 +13,10 @@ export interface MetricCalibrationInput {
 
 export interface ComputeKinematicsOptions {
   metricCalibration?: MetricCalibrationInput | null;
+  /** 3×3 homography matrix mapping normalised image coords to ground-plane metres. */
+  homography?: Mat3 | null;
+  /** Minimum landmark visibility to trust a joint angle (default 0.65). */
+  visibilityThreshold?: number;
 }
 
 /**
