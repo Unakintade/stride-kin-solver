@@ -313,6 +313,34 @@ const Analyze: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-1">
+                  <Label className="text-xs font-mono text-muted-foreground">Height (cm)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="50"
+                    max="250"
+                    placeholder="175"
+                    value={heightCm}
+                    onChange={(e) => setHeightCm(e.target.value)}
+                    className="w-24 h-8 text-sm font-mono"
+                    disabled={isProcessing}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-mono text-muted-foreground">Weight (kg)</Label>
+                  <Input
+                    type="number"
+                    step="0.1"
+                    min="20"
+                    max="300"
+                    placeholder="75"
+                    value={weightKg}
+                    onChange={(e) => setWeightKg(e.target.value)}
+                    className="w-24 h-8 text-sm font-mono"
+                    disabled={isProcessing}
+                  />
+                </div>
+                <div className="space-y-1">
                   <Label className="text-xs font-mono text-muted-foreground">
                     Playback (s)
                   </Label>
