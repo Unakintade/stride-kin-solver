@@ -528,6 +528,14 @@ const Analyze: React.FC = () => {
                 {mujocoData && (
                   <MuJoCoCharts mujocoData={mujocoData} fps={fps} />
                 )}
+                <SprintAISummary
+                  mujocoData={mujocoData}
+                  results={results}
+                  fps={fps}
+                  anthropometry={anthropometry}
+                  weightKg={weightKg.trim() !== "" ? Number(weightKg) : undefined}
+                  heightCm={heightCm.trim() !== "" ? Number(heightCm) : undefined}
+                />
               </>
             )}
           </>
