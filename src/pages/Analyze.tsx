@@ -524,6 +524,9 @@ const Analyze: React.FC = () => {
                   landmarks={filteredLandmarks}
                   fps={fps}
                 />
+                {mujocoData && (
+                  <MuJoCoCharts mujocoData={mujocoData} fps={fps} />
+                )}
               </>
             )}
           </>
