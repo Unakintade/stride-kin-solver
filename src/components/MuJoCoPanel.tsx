@@ -12,18 +12,26 @@ import {
   getMuJoCoBackendUrl,
   setMuJoCoBackendUrl,
   type MuJoCoSolveResponse,
-  type MuJoCoFrameResult,
 } from "@/lib/biomechanics/mujocoApi";
 
 interface Props {
-  filteredLandmarks: FrameLandmarks[];
-  fps: number;
-  anthropometry: Record<string, number>;
+  filteredLandmarks?: FrameLandmarks[];
+  fps?: number;
+  anthropometry?: Record<string, number>;
   weightKg?: number;
   heightCm?: number;
 }
 
-const MuJoCoPanel: React.FC<Props> = ({ filteredLandmarks = [], fps, anthropometry, weightKg, heightCm }) => {
+const MuJoCoPanel: React.FC<Props> = ({
+  filteredLandmarks,
+  fps,
+  anthropometry,
+  weightKg,
+  heightCm,
+}) => {
+  const landmarks = filteredLandmarks ?? [];
+  const safeFps = fps ?? 30;
+
   const [backendUrl, setBackendUrlLocal] = useState(getMuJoCoBackendUrl());
   const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const [isSolving, setIsSolving] = useState(false);
@@ -43,13 +51,13 @@ const MuJoCoPanel: React.FC<Props> = ({ filteredLandmarks = [], fps, anthropomet
   };
 
   const handleSolve = async () => {
-    if (filteredLandmarks.length < 2) return;
+    if (landmarks.length < 2) return;
     setIsSolving(true);
     setError(null);
     setProgress(0);
     try {
       const result = await solveMuJoCo(
-        filteredLandmarks, fps, anthropometry, setProgress, weightKg, heightCm
+        landmarks, safeFps, anthropometry, setProgress, weightKg, heightCm
       );
       setResponse(result);
     } catch (err: any) {
@@ -59,12 +67,11 @@ const MuJoCoPanel: React.FC<Props> = ({ filteredLandmarks = [], fps, anthropomet
     }
   };
 
-  const handleExportCSV = async () => {
-    if (!response) return;
+  const handleExportCSV = () => {
+    if (!response?.frames?.length) return;
     const frames = response.frames;
-    if (frames.length === 0) return;
 
-    const jointNames = Object.keys(frames[0].joints);
+    const jointNames = Object.keys(frames[0]?.joints ?? {});
     const headers = [
       "timestamp", "frame_idx",
       ...jointNames.flatMap((jn) => [`${jn}_angle_deg`, `${jn}_vel_rad_s`, `${jn}_torque_nm`]),
@@ -78,12 +85,14 @@ const MuJoCoPanel: React.FC<Props> = ({ filteredLandmarks = [], fps, anthropomet
     const rows = frames.map((f) => [
       f.timestamp, f.frame_idx,
       ...jointNames.flatMap((jn) => {
-        const j = f.joints[jn];
-        return [j.angle_deg, j.velocity_rad_s, j.torque_nm];
+        const j = f.joints?.[jn];
+        return [j?.angle_deg ?? 0, j?.velocity_rad_s ?? 0, j?.torque_nm ?? 0];
       }),
-      ...f.com_position, ...f.com_velocity,
-      ...f.grf_left, ...f.grf_right,
-      f.residual_error,
+      ...(f.com_position ?? [0, 0, 0]),
+      ...(f.com_velocity ?? [0, 0, 0]),
+      ...(f.grf_left ?? [0, 0, 0]),
+      ...(f.grf_right ?? [0, 0, 0]),
+      f.residual_error ?? 0,
     ]);
 
     const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
@@ -95,6 +104,10 @@ const MuJoCoPanel: React.FC<Props> = ({ filteredLandmarks = [], fps, anthropomet
     a.click();
     URL.revokeObjectURL(url);
   };
+
+  const frames = response?.frames ?? [];
+  const summary = response?.summary;
+  const firstFrame = frames[0];
 
   return (
     <Card className="bg-card border-border">
@@ -135,7 +148,7 @@ const MuJoCoPanel: React.FC<Props> = ({ filteredLandmarks = [], fps, anthropomet
         <div className="flex items-center gap-3">
           <Button
             onClick={handleSolve}
-            disabled={isSolving || !isOnline || filteredLandmarks.length < 2}
+            disabled={isSolving || !isOnline || landmarks.length < 2}
             className="gap-2 font-mono text-xs"
           >
             {isSolving ? (
@@ -150,7 +163,7 @@ const MuJoCoPanel: React.FC<Props> = ({ filteredLandmarks = [], fps, anthropomet
               </>
             )}
           </Button>
-          {response && (
+          {frames.length > 0 && (
             <Button size="sm" variant="outline" onClick={handleExportCSV} className="gap-1.5 font-mono text-xs">
               <Download className="w-3.5 h-3.5" /> Export Kinetics CSV
             </Button>
@@ -178,15 +191,15 @@ const MuJoCoPanel: React.FC<Props> = ({ filteredLandmarks = [], fps, anthropomet
         )}
 
         {/* Summary */}
-        {response && (
+        {summary && (
           <div className="space-y-3">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
               {[
-                { label: "Frames", value: response.summary.total_frames },
-                { label: "Solve Time", value: `${response.summary.solve_time_s}s` },
-                { label: "Mean Residual", value: `${(response.summary.mean_residual_m * 100).toFixed(1)} cm` },
-                { label: "Max Residual", value: `${(response.summary.max_residual_m * 100).toFixed(1)} cm` },
-                { label: "Warnings", value: response.summary.total_warnings },
+                { label: "Frames", value: summary.total_frames },
+                { label: "Solve Time", value: `${summary.solve_time_s}s` },
+                { label: "Mean Residual", value: `${((summary.mean_residual_m ?? 0) * 100).toFixed(1)} cm` },
+                { label: "Max Residual", value: `${((summary.max_residual_m ?? 0) * 100).toFixed(1)} cm` },
+                { label: "Warnings", value: summary.total_warnings },
               ].map((s, i) => (
                 <div key={i} className="bg-secondary rounded-md p-3">
                   <p className="text-[10px] text-muted-foreground font-mono uppercase tracking-wider">{s.label}</p>
@@ -196,17 +209,17 @@ const MuJoCoPanel: React.FC<Props> = ({ filteredLandmarks = [], fps, anthropomet
             </div>
 
             {/* Sample frame data */}
-            {response.frames.length > 0 && (
+            {firstFrame?.joints && (
               <div className="space-y-2">
                 <p className="text-xs font-mono text-muted-foreground">
                   Joint Torques (frame 0):
                 </p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {Object.entries(response.frames[0].joints).slice(0, 8).map(([name, j]) => (
+                  {Object.entries(firstFrame.joints).slice(0, 8).map(([name, j]) => (
                     <div key={name} className="bg-secondary rounded p-2">
                       <p className="text-[9px] font-mono text-muted-foreground truncate">{name}</p>
-                      <p className="text-sm font-semibold text-foreground">{j.torque_nm.toFixed(1)} Nm</p>
-                      <p className="text-[9px] font-mono text-primary/70">{j.velocity_rad_s.toFixed(2)} rad/s</p>
+                      <p className="text-sm font-semibold text-foreground">{(j?.torque_nm ?? 0).toFixed(1)} Nm</p>
+                      <p className="text-[9px] font-mono text-primary/70">{(j?.velocity_rad_s ?? 0).toFixed(2)} rad/s</p>
                     </div>
                   ))}
                 </div>
