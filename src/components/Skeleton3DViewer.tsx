@@ -129,29 +129,10 @@ function FootMesh({ anklePos, heelPos, toePos, color }: {
 
   if (footLen < 0.005) return null;
 
-  const center = useMemo<[number, number, number]>(() => [
-    anklePos[0] + footDir.x * 0.3,
-    anklePos[1] - 0.005, // slightly below ankle
-    anklePos[2] + footDir.z * 0.3,
-  ], [anklePos, footDir]);
-
-  const quaternion = useMemo(() => {
-    const forward = footDir.clone().normalize();
-    const q = new THREE.Quaternion();
-    q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), forward);
-    return q;
-  }, [footDir]);
-
   return (
     <mesh position={center} quaternion={quaternion}>
       <boxGeometry args={[0.03, 0.012, footLen]} />
-      <meshStandardMaterial
-        color={color}
-        emissive={color}
-        emissiveIntensity={0.15}
-        roughness={0.7}
-        metalness={0.05}
-      />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.15} roughness={0.7} metalness={0.05} />
     </mesh>
   );
 }
