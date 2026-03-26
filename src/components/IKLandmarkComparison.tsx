@@ -203,7 +203,7 @@ const IKLandmarkComparison: React.FC<Props> = ({
     const sampleKin = results[0]?.jointAngles ?? [];
     const sharedJoints = sampleKin
       .map((j) => j.name)
-      .filter((n) => n in sampleIk);
+      .filter((n) => findIKJoint(n, sampleIk) !== null);
 
     if (sharedJoints.length === 0) return [];
 
@@ -213,11 +213,12 @@ const IKLandmarkComparison: React.FC<Props> = ({
     return results.map((r, i) => {
       const ikF = mujocoFrames[i];
       const kinJ = r.jointAngles.find((j) => j.name === jointName);
+      const ikJoint = ikF?.joints ? findIKJoint(jointName, ikF.joints) : null;
       return {
         time: r.timestamp,
         frame: i,
         mocap: kinJ?.angleDeg ?? null,
-        ik: ikF?.joints?.[jointName]?.angle_deg ?? null,
+        ik: ikJoint?.angle_deg ?? null,
       };
     }).filter((d) => d.mocap !== null || d.ik !== null);
   }, [results, mujocoFrames, hasIK]);
@@ -226,7 +227,7 @@ const IKLandmarkComparison: React.FC<Props> = ({
     if (!hasIK || results.length === 0) return "";
     const sampleIk = mujocoFrames[0]?.joints ?? {};
     const sampleKin = results[0]?.jointAngles ?? [];
-    return sampleKin.map((j) => j.name).find((n) => n in sampleIk) ?? "";
+    return sampleKin.map((j) => j.name).find((n) => findIKJoint(n, sampleIk) !== null) ?? "";
   }, [results, mujocoFrames, hasIK]);
 
   if (!hasIK && results.length === 0) return null;
