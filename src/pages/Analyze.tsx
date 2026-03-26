@@ -58,6 +58,9 @@ const Analyze: React.FC = () => {
   const [inferredFps, setInferredFps] = useState<number | null>(null);
   const [fieldWidthMeters, setFieldWidthMeters] = useState("");
   const [useRtsSmoother, setUseRtsSmoother] = useState(true);
+  const [gatingMode, setGatingMode] = useState<GatingMode>("interpolate");
+  const [showVisDebug, setShowVisDebug] = useState(false);
+  const [forwardLandmarks, setForwardLandmarks] = useState<FrameLandmarks[]>([]);
   const [maxFrames, setMaxFrames] = useState(0); // 0 = no limit
   const [playbackDuration, setPlaybackDuration] = useState(2); // seconds
   const [heightCm, setHeightCm] = useState("");
