@@ -578,6 +578,36 @@ const Analyze: React.FC = () => {
             {/* Results dashboard */}
             {results.length > 0 && (
               <>
+                {showVisDebug && forwardLandmarks.length > 0 && (
+                  <Card className="bg-card border-border">
+                    <CardContent className="p-4">
+                      <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2">
+                        Visibility Debug (per-frame min visibility)
+                      </h3>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs font-mono mb-2"
+                        onClick={() => {
+                          const report = dumpVisibilityReport(forwardLandmarks);
+                          const csv = visibilityReportCSV(report);
+                          const blob = new Blob([csv], { type: "text/csv" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = "visibility_debug.csv";
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        <Download className="w-3.5 h-3.5 mr-1" /> Export Visibility CSV
+                      </Button>
+                      <p className="text-[10px] font-mono text-muted-foreground">
+                        {forwardLandmarks.length} frames • Per-joint min visibility exported for debugging low-confidence tracking.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
                 <ResultsDashboard results={results} anthropometry={anthropometry} />
                 <MuJoCoPanel
                   filteredLandmarks={forwardLandmarks.length > 0 ? forwardLandmarks : filteredLandmarks}
