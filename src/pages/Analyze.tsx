@@ -24,6 +24,7 @@ import type { Mat3 } from "@/lib/biomechanics/homography";
 import type { MuJoCoSolveResponse } from "@/lib/biomechanics/mujocoApi";
 import { detectPoseInVideo } from "@/lib/biomechanics/detection";
 import { smoothLandmarks } from "@/lib/biomechanics/filtering";
+import type { SmoothLandmarksResult } from "@/lib/biomechanics/filtering";
 import { computeKinematics, computeAnthropometry } from "@/lib/biomechanics/kinematics";
 import { computeKinematics as computeKinematicsBaseline } from "@/lib/biomechanics/kinematicsBaseline";
 import {
