@@ -263,13 +263,17 @@ export function computeKinematics(
       let velocity = 0;
       if (i > 0) {
         const prevAngle = interpAngles[j][i - 1];
-        velocity = ((angle - prevAngle) * Math.PI) / (180 * dt);
+        const rawVelocity = ((angle - prevAngle) * Math.PI) / (180 * dt);
 
         const limit = JOINT_VELOCITY_LIMITS[jd.limitKey] ?? JOINT_VELOCITY_LIMITS.default;
-        if (Math.abs(velocity) > limit) {
+        if (Math.abs(rawVelocity) > limit) {
+          // Clamp to physiological limit instead of passing artifact through
+          velocity = Math.sign(rawVelocity) * limit;
           warnings.push(
-            `${jd.name}: ${Math.abs(velocity).toFixed(1)} rad/s exceeds limit ${limit} rad/s`
+            `${jd.name}: velocity clamped from ${Math.abs(rawVelocity).toFixed(1)} to ${limit} rad/s (artifact)`
           );
+        } else {
+          velocity = rawVelocity;
         }
       }
 
