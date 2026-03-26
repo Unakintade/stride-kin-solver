@@ -43,6 +43,100 @@ function JointSphere({ position, color, size = 0.015 }: {
   );
 }
 
+/* ─── Capsule Limb Segment ────────────────────────── */
+function LimbCapsule({ start, end, radius = 0.012, color }: {
+  start: [number, number, number];
+  end: [number, number, number];
+  radius?: number;
+  color: THREE.Color;
+}) {
+  const midpoint = useMemo<[number, number, number]>(() => [
+    (start[0] + end[0]) / 2,
+    (start[1] + end[1]) / 2,
+    (start[2] + end[2]) / 2,
+  ], [start, end]);
+
+  const length = useMemo(() => {
+    const dx = end[0] - start[0];
+    const dy = end[1] - start[1];
+    const dz = end[2] - start[2];
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }, [start, end]);
+
+  const quaternion = useMemo(() => {
+    const dir = new THREE.Vector3(
+      end[0] - start[0],
+      end[1] - start[1],
+      end[2] - start[2],
+    ).normalize();
+    const q = new THREE.Quaternion();
+    q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    return q;
+  }, [start, end]);
+
+  if (length < 0.001) return null;
+
+  return (
+    <mesh position={midpoint} quaternion={quaternion}>
+      <capsuleGeometry args={[radius, length - radius * 2, 6, 12]} />
+      <meshStandardMaterial
+        color={color}
+        emissive={color}
+        emissiveIntensity={0.15}
+        roughness={0.6}
+        metalness={0.1}
+      />
+    </mesh>
+  );
+}
+
+/* ─── Foot mesh (a small flat wedge shape) ────────── */
+function FootMesh({ anklePos, heelPos, toePos, color }: {
+  anklePos: [number, number, number];
+  heelPos: [number, number, number];
+  toePos: [number, number, number];
+  color: THREE.Color;
+}) {
+  // Build a small foot shape from ankle→heel and ankle→toe
+  // Foot direction: heel→toe, keep it grounded
+  const footDir = useMemo(() => {
+    const dir = new THREE.Vector3(
+      toePos[0] - heelPos[0],
+      0, // keep foot flat on ground plane
+      toePos[2] - heelPos[2],
+    );
+    const len = dir.length();
+    // Clamp foot length to something reasonable (max ~0.08m)
+    const clampedLen = Math.min(len, 0.08);
+    if (len > 0.001) dir.normalize().multiplyScalar(clampedLen);
+    return dir;
+  }, [heelPos, toePos]);
+
+  const footLen = footDir.length();
+
+  const center = useMemo<[number, number, number]>(() => [
+    anklePos[0] + footDir.x * 0.3,
+    anklePos[1] - 0.005,
+    anklePos[2] + footDir.z * 0.3,
+  ], [anklePos, footDir]);
+
+  const quaternion = useMemo(() => {
+    const forward = footDir.clone().normalize();
+    const q = new THREE.Quaternion();
+    q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), forward);
+    return q;
+  }, [footDir]);
+
+  if (footLen < 0.005) return null;
+
+  return (
+    <mesh position={center} quaternion={quaternion}>
+      <boxGeometry args={[0.03, 0.012, footLen]} />
+      <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.15} roughness={0.7} metalness={0.05} />
+    </mesh>
+  );
+}
+
 /* ─── GRF Arrow ───────────────────────────────────── */
 function GRFArrow({ origin, force, color }: {
   origin: [number, number, number];
@@ -180,28 +274,112 @@ function SkeletonScene({ landmarks, mujocoFrame, showIMU }: {
       .map(name => ({ name, idx: nameToIdx[name] }));
   }, [mujocoFrame]);
 
+  // Head position (midpoint of shoulders, offset up) — must be before early return
+  const headPos = useMemo<[number, number, number] | null>(() => {
+    if (shiftedPositions.length < 13) return null;
+    const ls = shiftedPositions[11];
+    const rs = shiftedPositions[12];
+    return [
+      (ls[0] + rs[0]) / 2,
+      Math.max(ls[1], rs[1]) + 0.12,
+      (ls[2] + rs[2]) / 2,
+    ];
+  }, [shiftedPositions]);
+
   if (!hasData) return null;
+
+  const BODY_CONNECTIONS: [number, number][] = [
+    [11, 13], [13, 15], [12, 14], [14, 16],
+    [11, 12], [23, 24],
+    [11, 23], [12, 24],
+    [23, 25], [25, 27], [24, 26], [26, 28],
+  ];
+
+  const limbRadius = (a: number, b: number) => {
+    if ((a === 11 && b === 23) || (a === 12 && b === 24)) return 0.018;
+    if (a === 11 && b === 12) return 0.016;
+    if (a === 23 && b === 24) return 0.016;
+    if ((a === 23 && b === 25) || (a === 24 && b === 26)) return 0.016;
+    if ((a === 25 && b === 27) || (a === 26 && b === 28)) return 0.014;
+    if ((a === 11 && b === 13) || (a === 12 && b === 14)) return 0.012;
+    if ((a === 13 && b === 15) || (a === 14 && b === 16)) return 0.010;
+    return 0.012;
+  };
+
+  const SKIN_COLOR = new THREE.Color("hsl(200, 50%, 55%)");
 
   return (
     <group>
-      {/* Joint spheres */}
+      {/* Joint spheres — only at major joints, skip face & foot sub-landmarks */}
       {shiftedPositions.map((pos, i) => {
-        if (i < 11 || (landmarks.visibility?.[i] ?? 0) < 0.3) return null;
-        return <JointSphere key={i} position={pos} color={JOINT_COLOR} />;
+        if (i < 11 || i > 28) return null; // skip face (0-10) and foot details (29-32)
+        if ((landmarks.visibility?.[i] ?? 0) < 0.3) return null;
+        const size = (i === 11 || i === 12 || i === 23 || i === 24) ? 0.018 : 0.014;
+        return <JointSphere key={i} position={pos} color={JOINT_COLOR} size={size} />;
       })}
 
-      {/* Bones */}
-      {SKELETON_CONNECTIONS.map(([a, b], i) => {
+      {/* Head */}
+      {headPos && (
+        <mesh position={headPos}>
+          <sphereGeometry args={[0.045, 16, 16]} />
+          <meshStandardMaterial
+            color={SKIN_COLOR}
+            emissive={SKIN_COLOR}
+            emissiveIntensity={0.15}
+            roughness={0.6}
+          />
+        </mesh>
+      )}
+
+      {/* Neck (shoulders midpoint → head) */}
+      {headPos && shiftedPositions.length >= 13 && (
+        <LimbCapsule
+          start={[
+            (shiftedPositions[11][0] + shiftedPositions[12][0]) / 2,
+            (shiftedPositions[11][1] + shiftedPositions[12][1]) / 2,
+            (shiftedPositions[11][2] + shiftedPositions[12][2]) / 2,
+          ]}
+          end={[headPos[0], headPos[1] - 0.04, headPos[2]]}
+          radius={0.012}
+          color={SKIN_COLOR}
+        />
+      )}
+
+      {/* Capsule limbs */}
+      {BODY_CONNECTIONS.map(([a, b], i) => {
         if ((landmarks.visibility?.[a] ?? 0) < 0.3 || (landmarks.visibility?.[b] ?? 0) < 0.3) return null;
         return (
-          <Line
-            key={`bone-${i}`}
-            points={[shiftedPositions[a], shiftedPositions[b]]}
+          <LimbCapsule
+            key={`limb-${i}`}
+            start={shiftedPositions[a]}
+            end={shiftedPositions[b]}
+            radius={limbRadius(a, b)}
             color={BONE_COLOR}
-            lineWidth={2}
           />
         );
       })}
+
+      {/* Left foot */}
+      {shiftedPositions[27] && shiftedPositions[29] && shiftedPositions[31] &&
+       (landmarks.visibility?.[27] ?? 0) >= 0.3 && (
+        <FootMesh
+          anklePos={shiftedPositions[27]}
+          heelPos={shiftedPositions[29]}
+          toePos={shiftedPositions[31]}
+          color={BONE_COLOR}
+        />
+      )}
+
+      {/* Right foot */}
+      {shiftedPositions[28] && shiftedPositions[30] && shiftedPositions[32] &&
+       (landmarks.visibility?.[28] ?? 0) >= 0.3 && (
+        <FootMesh
+          anklePos={shiftedPositions[28]}
+          heelPos={shiftedPositions[30]}
+          toePos={shiftedPositions[32]}
+          color={BONE_COLOR}
+        />
+      )}
 
       {/* CoM marker */}
       {mujocoFrame?.com_position && (
