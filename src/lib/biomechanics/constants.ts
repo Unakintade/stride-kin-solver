@@ -67,6 +67,17 @@ export const JOINT_VELOCITY_LIMITS: Record<string, number> = {
 /** Maximum plausible sprint CoM speed (m/s). Anything above is a tracking artifact. */
 export const MAX_COM_SPEED_MS = 15.0;
 
+/**
+ * Moving-average half-width (frames) on hip-mid CoM position before differentiating for velocity.
+ * Reduces differentiation noise; full window = 2 * half + 1 (default 5 frames ≈ 170 ms @ 30 Hz).
+ */
+export const COM_TRACK_SMOOTH_HALF_WIDTH = 2;
+
+/**
+ * Moving-average half-width on joint angles (radians) before angular velocity (default 3 frames).
+ */
+export const JOINT_ANGLE_PRE_DERIV_HALF_WIDTH = 1;
+
 /** Paired limb segments for symmetry averaging (left key → right key). */
 export const SYMMETRIC_LIMB_PAIRS: [string, string][] = [
   ["left_upper_arm", "right_upper_arm"],
