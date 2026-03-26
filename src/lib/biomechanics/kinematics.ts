@@ -359,35 +359,10 @@ export function computeKinematics(
     const comWorldZ = (wp[23][2] + wp[24][2]) / 2;
     const comPosition: [number, number, number] = [comX, comY, comWorldZ];
 
-    // CoM velocity via central diff (computed inline for 3 axes)
+    // CoM velocity via velocityFromPositionTrack (central/forward/backward diff with timestamps)
     let comVelocity: [number, number, number] = [0, 0, 0];
-    if (landmarks.length >= 2) {
-      // Use central diff for CoM too
-      const prevIdx = Math.max(0, i - 1);
-      const nextIdx = Math.min(landmarks.length - 1, i + 1);
-      const prevIp = landmarks[prevIdx].positions;
-      const nextIp = landmarks[nextIdx].positions;
-      const prevWp = landmarks[prevIdx].worldPositions;
-      const nextWp = landmarks[nextIdx].worldPositions;
-
-      const [prevX, prevY] = toMetric(
-        (prevIp[23][0] + prevIp[24][0]) / 2,
-        (prevIp[23][1] + prevIp[24][1]) / 2
-      );
-      const [nextX, nextY] = toMetric(
-        (nextIp[23][0] + nextIp[24][0]) / 2,
-        (nextIp[23][1] + nextIp[24][1]) / 2
-      );
-      const prevZ = (prevWp[23][2] + prevWp[24][2]) / 2;
-      const nextZ = (nextWp[23][2] + nextWp[24][2]) / 2;
-
-      const span = (nextIdx - prevIdx) * dt;
-      const rawComVel: [number, number, number] = [
-        (nextX - prevX) / span,
-        (nextY - prevY) / span,
-        (nextZ - prevZ) / span,
-      ];
-
+    if (comPositions.length >= 2) {
+      const rawComVel = velocityFromPositionTrack(comPositions, timestamps, fps, i);
       const comSpeed = Math.sqrt(rawComVel[0] ** 2 + rawComVel[1] ** 2 + rawComVel[2] ** 2);
       if (comSpeed > MAX_COM_SPEED_MS) {
         const scale = MAX_COM_SPEED_MS / comSpeed;
