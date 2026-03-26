@@ -75,3 +75,26 @@ export function sgDeriv5(signal: number[], dt: number): number[] {
 export function smartDeriv(signal: number[], dt: number): number[] {
   return signal.length >= 5 ? sgDeriv5(signal, dt) : centralDiff(signal, dt);
 }
+
+/**
+ * Symmetric moving average; skips non-finite samples in each window (NaN-safe).
+ */
+export function movingAverage1d(signal: number[], halfWidth: number): number[] {
+  const n = signal.length;
+  if (n === 0) return [];
+  if (halfWidth <= 0) return signal.slice();
+  const out = new Array<number>(n);
+  for (let i = 0; i < n; i++) {
+    let s = 0;
+    let c = 0;
+    for (let j = Math.max(0, i - halfWidth); j <= Math.min(n - 1, i + halfWidth); j++) {
+      const v = signal[j];
+      if (Number.isFinite(v)) {
+        s += v;
+        c++;
+      }
+    }
+    out[i] = c > 0 ? s / c : NaN;
+  }
+  return out;
+}
