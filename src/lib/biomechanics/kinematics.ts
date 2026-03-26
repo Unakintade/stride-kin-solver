@@ -349,10 +349,6 @@ export function computeKinematics(
       : comTrack;
   const frameTimestamps = landmarks.map((fl) => fl.timestamp);
 
-    // CoM track (hip midpoint in metres) — shared for position + timestamp-aware velocity
-  const comTrack = buildHipComTrack(landmarks, toMetric, { planarZ: false });
-  const frameTimestamps = landmarks.map((fl) => fl.timestamp);
-
   // ── Second pass: assemble results ──
   for (let i = 0; i < landmarks.length; i++) {
     const fl = landmarks[i];
