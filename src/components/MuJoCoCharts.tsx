@@ -40,6 +40,16 @@ const MuJoCoCharts: React.FC<Props> = ({ mujocoData, fps = 30 }) => {
   const [activeTab, setActiveTab] = useState<ChartTab>("angles");
   const frames = mujocoData.frames ?? [];
 
+  /** Prefer frame timestamps (irregular capture); fall back to uniform i/fps */
+  const chartTimes = useMemo(() => {
+    if (frames.length === 0) return [];
+    const ts = frames.map((f) => f.timestamp);
+    const allFinite = ts.every((t) => Number.isFinite(t));
+    const spread = Math.max(...ts) - Math.min(...ts);
+    if (allFinite && (spread > 1e-6 || frames.length === 1)) return ts;
+    return frames.map((_, i) => i / fps);
+  }, [frames, fps]);
+
   const jointNames = useMemo(() => {
     if (frames.length === 0) return [];
     const names = new Set<string>();
@@ -51,34 +61,34 @@ const MuJoCoCharts: React.FC<Props> = ({ mujocoData, fps = 30 }) => {
 
   const angleData = useMemo(() =>
     frames.map((f, i) => {
-      const row: Record<string, number> = { time: +(i / fps).toFixed(3) };
+      const row: Record<string, number> = { time: +chartTimes[i].toFixed(4) };
       jointNames.forEach((jn) => {
         row[jn] = f.joints?.[jn]?.angle_deg ?? 0;
       });
       return row;
-    }), [frames, jointNames, fps]);
+    }), [frames, jointNames, chartTimes]);
 
   const torqueData = useMemo(() =>
     frames.map((f, i) => {
-      const row: Record<string, number> = { time: +(i / fps).toFixed(3) };
+      const row: Record<string, number> = { time: +chartTimes[i].toFixed(4) };
       jointNames.forEach((jn) => {
         row[jn] = f.joints?.[jn]?.torque_nm ?? 0;
       });
       return row;
-    }), [frames, jointNames, fps]);
+    }), [frames, jointNames, chartTimes]);
 
   const grfData = useMemo(() =>
     frames.map((f, i) => {
       const gl = f.grf_left ?? [0, 0, 0];
       const gr = f.grf_right ?? [0, 0, 0];
       return {
-        time: +(i / fps).toFixed(3),
+        time: +chartTimes[i].toFixed(4),
         left: +Math.sqrt(gl[0] ** 2 + gl[1] ** 2 + gl[2] ** 2).toFixed(1),
         right: +Math.sqrt(gr[0] ** 2 + gr[1] ** 2 + gr[2] ** 2).toFixed(1),
         left_vertical: Math.abs(gl[1]),
         right_vertical: Math.abs(gr[1]),
       };
-    }), [frames, fps]);
+    }), [frames, chartTimes]);
 
   if (frames.length === 0) {
     return (
@@ -86,7 +96,7 @@ const MuJoCoCharts: React.FC<Props> = ({ mujocoData, fps = 30 }) => {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-mono text-foreground flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-primary" />
-            MuJoCo Time-Series
+            Kinetics time-series
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -112,7 +122,7 @@ const MuJoCoCharts: React.FC<Props> = ({ mujocoData, fps = 30 }) => {
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-mono text-foreground flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-primary" />
-          MuJoCo Time-Series
+          Kinetics time-series
           <Badge variant="outline" className="text-[10px] text-primary/80 border-primary/30 ml-auto">
             {frames.length} frames
           </Badge>
