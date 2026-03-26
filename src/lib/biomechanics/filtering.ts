@@ -182,6 +182,13 @@ export interface SmoothLandmarksOptions {
   useRtsSmoother?: boolean;
 }
 
+export interface SmoothLandmarksResult {
+  /** RTS-smoothed landmarks — visually smooth, best for skeleton overlay. */
+  smoothed: FrameLandmarks[];
+  /** Forward-only Kalman landmarks — preserves sharper transients for derivatives/kinematics. */
+  forward: FrameLandmarks[];
+}
+
 /**
  * Smooth world landmark positions with a constant-acceleration Kalman filter per axis,
  * optionally followed by an RTS smoother for non-causal refinement.
@@ -191,9 +198,9 @@ export function smoothLandmarks(
   fps: number,
   onProgress?: (progress: number) => void,
   options?: SmoothLandmarksOptions
-): FrameLandmarks[] {
+): SmoothLandmarksResult {
   const useRts = options?.useRtsSmoother !== false;
-  if (landmarks.length === 0) return [];
+  if (landmarks.length === 0) return { smoothed: [], forward: [] };
 
   const N = landmarks.length;
   const dt = 1 / fps;
@@ -255,14 +262,29 @@ export function smoothLandmarks(
     onProgress?.((f + 1) / (useRts ? 2 * N : N));
   }
 
-  const out: FrameLandmarks[] = landmarks.map((fl) => ({
-    frameIdx: fl.frameIdx,
-    timestamp: fl.timestamp,
-    positions: fl.positions.map((row) => [...row]),
-    worldPositions: fl.worldPositions.map((row) => [...row]),
-    visibility: [...fl.visibility],
-  }));
+  // Helper to clone landmark frames
+  const cloneFrames = (): FrameLandmarks[] =>
+    landmarks.map((fl) => ({
+      frameIdx: fl.frameIdx,
+      timestamp: fl.timestamp,
+      positions: fl.positions.map((row) => [...row]),
+      worldPositions: fl.worldPositions.map((row) => [...row]),
+      visibility: [...fl.visibility],
+    }));
 
+  // Forward-only Kalman output (sharper transients for kinematics / derivatives)
+  const forward = cloneFrames();
+  for (const idx of indices) {
+    for (let axis = 0; axis < 3; axis++) {
+      const s = series[idx][axis];
+      for (let f = 0; f < N; f++) {
+        forward[f].worldPositions[idx][axis] = s.xFilt[f][0];
+      }
+    }
+  }
+
+  // RTS-smoothed output (smooth skeleton for visualization)
+  const smoothed = cloneFrames();
   for (const idx of indices) {
     for (let axis = 0; axis < 3; axis++) {
       const s = series[idx][axis];
@@ -271,7 +293,7 @@ export function smoothLandmarks(
         : s.xFilt;
 
       for (let f = 0; f < N; f++) {
-        out[f].worldPositions[idx][axis] = smoothedStates[f][0];
+        smoothed[f].worldPositions[idx][axis] = smoothedStates[f][0];
       }
     }
   }
@@ -282,5 +304,5 @@ export function smoothLandmarks(
     }
   }
 
-  return out;
+  return { smoothed, forward };
 }

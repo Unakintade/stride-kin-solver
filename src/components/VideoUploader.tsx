@@ -51,7 +51,10 @@ const VideoUploader: React.FC<Props> = ({ onVideoSelected, isProcessing }) => {
             Drop a sprint video here
           </p>
           <p className="text-muted-foreground text-sm mt-1">
-            MP4, MOV, or WebM • 120/240fps recommended
+            MP4, MOV, or WebM • <strong>120+ fps</strong> recommended for sprint analysis
+          </p>
+          <p className="text-muted-foreground text-xs mt-0.5">
+            Side or diagonal framing, stable camera. 240 fps ideal for foot-strike detail.
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
