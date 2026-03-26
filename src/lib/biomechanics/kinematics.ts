@@ -3,6 +3,7 @@ import { LIMB_SEGMENTS, JOINT_VELOCITY_LIMITS, MAX_COM_SPEED_MS, SYMMETRIC_LIMB_
 import { landmarksVisible, minVisibility, interpolateGatedAngles, DEFAULT_VISIBILITY_THRESHOLD } from "./visibility";
 import { type Mat3, applyHomography } from "./homography";
 import { smartDeriv } from "./derivatives";
+import { buildHipComTrack, velocityFromPositionTrack } from "./comVelocity";
 
 /** Calibrate normalized image coordinates to meters using a known horizontal span (e.g. track markings). */
 export interface MetricCalibrationInput {
