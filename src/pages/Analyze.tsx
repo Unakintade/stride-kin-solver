@@ -153,7 +153,7 @@ const Analyze: React.FC = () => {
       const fw = fieldWidthMeters.trim();
       const fieldM = fw === "" ? NaN : Number(fw);
       const kinResults = computeKinematics(
-        filtered,
+        forward,
         fps,
         (progress) => updateStage("kinematics", { progress }),
         {
