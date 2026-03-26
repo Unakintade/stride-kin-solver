@@ -25,7 +25,7 @@ export const MOCAP_TARGET_LANDMARKS: Record<string, number> = {
   left_ankle: 27, right_ankle: 28,
 };
 
-/** @deprecated Use MOCAP_TARGET_LANDMARKS */
+/** Same landmark set as {@link MOCAP_TARGET_LANDMARKS}; IK-oriented name for inverse-kinematics pipelines. */
 export const IK_LANDMARKS = MOCAP_TARGET_LANDMARKS;
 
 // Limb segments for anthropometric scaling

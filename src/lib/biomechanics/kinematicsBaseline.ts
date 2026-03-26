@@ -1,6 +1,12 @@
 import type { FrameLandmarks, FrameResult, JointAngle } from "./types";
 import { IK_LANDMARKS, LIMB_SEGMENTS, JOINT_VELOCITY_LIMITS } from "./constants";
 
+const L = IK_LANDMARKS;
+
+/** Foot index tips (BlazePose); not in IK target set. */
+const LEFT_FOOT_INDEX = 31;
+const RIGHT_FOOT_INDEX = 32;
+
 /**
  * Calculate joint angle between three points (in degrees).
  */
@@ -20,16 +26,16 @@ function dist3(a: number[], b: number[]): number {
 }
 
 const JOINT_DEFINITIONS: { name: string; landmarks: [number, number, number]; limitKey: string }[] = [
-  { name: "Left Shoulder Flexion", landmarks: [23, 11, 13], limitKey: "shoulder_flexion" },
-  { name: "Right Shoulder Flexion", landmarks: [24, 12, 14], limitKey: "shoulder_flexion" },
-  { name: "Left Elbow Flexion", landmarks: [11, 13, 15], limitKey: "elbow_flexion" },
-  { name: "Right Elbow Flexion", landmarks: [12, 14, 16], limitKey: "elbow_flexion" },
-  { name: "Left Hip Flexion", landmarks: [11, 23, 25], limitKey: "hip_flexion" },
-  { name: "Right Hip Flexion", landmarks: [12, 24, 26], limitKey: "hip_flexion" },
-  { name: "Left Knee Extension", landmarks: [23, 25, 27], limitKey: "knee_extension" },
-  { name: "Right Knee Extension", landmarks: [24, 26, 28], limitKey: "knee_extension" },
-  { name: "Left Ankle Flexion", landmarks: [25, 27, 31], limitKey: "ankle_plantarflexion" },
-  { name: "Right Ankle Flexion", landmarks: [26, 28, 32], limitKey: "ankle_plantarflexion" },
+  { name: "Left Shoulder Flexion", landmarks: [L.left_hip, L.left_shoulder, L.left_elbow], limitKey: "shoulder_flexion" },
+  { name: "Right Shoulder Flexion", landmarks: [L.right_hip, L.right_shoulder, L.right_elbow], limitKey: "shoulder_flexion" },
+  { name: "Left Elbow Flexion", landmarks: [L.left_shoulder, L.left_elbow, L.left_wrist], limitKey: "elbow_flexion" },
+  { name: "Right Elbow Flexion", landmarks: [L.right_shoulder, L.right_elbow, L.right_wrist], limitKey: "elbow_flexion" },
+  { name: "Left Hip Flexion", landmarks: [L.left_shoulder, L.left_hip, L.left_knee], limitKey: "hip_flexion" },
+  { name: "Right Hip Flexion", landmarks: [L.right_shoulder, L.right_hip, L.right_knee], limitKey: "hip_flexion" },
+  { name: "Left Knee Extension", landmarks: [L.left_hip, L.left_knee, L.left_ankle], limitKey: "knee_extension" },
+  { name: "Right Knee Extension", landmarks: [L.right_hip, L.right_knee, L.right_ankle], limitKey: "knee_extension" },
+  { name: "Left Ankle Flexion", landmarks: [L.left_knee, L.left_ankle, LEFT_FOOT_INDEX], limitKey: "ankle_plantarflexion" },
+  { name: "Right Ankle Flexion", landmarks: [L.right_knee, L.right_ankle, RIGHT_FOOT_INDEX], limitKey: "ankle_plantarflexion" },
 ];
 
 /**
@@ -74,13 +80,13 @@ export function computeKinematics(
     });
 
     // Stride length (ankle-to-ankle distance)
-    const strideLength = dist3(wp[27], wp[28]);
+    const strideLength = dist3(wp[L.left_ankle], wp[L.right_ankle]);
 
     // Center of mass (approximate as midpoint of hips)
     const comPosition: [number, number, number] = [
-      (wp[23][0] + wp[24][0]) / 2,
-      (wp[23][1] + wp[24][1]) / 2,
-      (wp[23][2] + wp[24][2]) / 2,
+      (wp[L.left_hip][0] + wp[L.right_hip][0]) / 2,
+      (wp[L.left_hip][1] + wp[L.right_hip][1]) / 2,
+      (wp[L.left_hip][2] + wp[L.right_hip][2]) / 2,
     ];
 
     // CoM velocity
