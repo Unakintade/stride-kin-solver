@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Activity, ArrowLeft, Play, Pause, SkipForward, SkipBack } from "lucide-react";
+import { Activity, ArrowLeft, Play, Pause, SkipForward, SkipBack, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
@@ -32,6 +32,9 @@ import {
   RECOMMENDED_SPRINT_CAPTURE_FPS,
 } from "@/lib/biomechanics/constants";
 import { inferVideoFrameRate } from "@/lib/biomechanics/video";
+import { validateFps } from "@/lib/biomechanics/fpsValidation";
+import { dumpVisibilityReport, visibilityReportCSV } from "@/lib/biomechanics/debugVisibility";
+import type { GatingMode } from "@/lib/biomechanics/kinematics";
 
 const INITIAL_STAGES: PipelineStage[] = [
   { id: "detection", name: "Vision", description: "BlazePose", status: "pending", progress: 0 },
@@ -55,6 +58,9 @@ const Analyze: React.FC = () => {
   const [inferredFps, setInferredFps] = useState<number | null>(null);
   const [fieldWidthMeters, setFieldWidthMeters] = useState("");
   const [useRtsSmoother, setUseRtsSmoother] = useState(true);
+  const [gatingMode, setGatingMode] = useState<GatingMode>("interpolate");
+  const [showVisDebug, setShowVisDebug] = useState(false);
+  const [forwardLandmarks, setForwardLandmarks] = useState<FrameLandmarks[]>([]);
   const [maxFrames, setMaxFrames] = useState(0); // 0 = no limit
   const [playbackDuration, setPlaybackDuration] = useState(2); // seconds
   const [heightCm, setHeightCm] = useState("");
@@ -92,6 +98,7 @@ const Analyze: React.FC = () => {
     setStages(INITIAL_STAGES);
     setRawLandmarks([]);
     setFilteredLandmarks([]);
+    setForwardLandmarks([]);
     setResults([]);
     setCurrentFrame(0);
   }, []);
@@ -146,6 +153,7 @@ const Analyze: React.FC = () => {
         { useRtsSmoother }
       );
       setFilteredLandmarks(smoothed);
+      setForwardLandmarks(forward);
       updateStage("filtering", { status: "complete", progress: 1 });
 
       // Stage 3: Kinematics
@@ -169,6 +177,7 @@ const Analyze: React.FC = () => {
                 }
               : null,
           homography: homographyMatrix,
+          gatingMode,
         }
       );
       setResults(kinResults);
@@ -255,25 +264,32 @@ const Analyze: React.FC = () => {
             {/* Controls */}
             <Card className="bg-card border-border">
               <CardContent className="p-4 flex flex-col gap-4">
-                {fps > 0 && fps < LOW_FPS_WARNING_THRESHOLD && (
-                  <Alert className="border-amber-500/40 bg-amber-500/10 text-foreground">
-                    <AlertTitle className="font-mono text-xs">Low sampling rate</AlertTitle>
-                    <AlertDescription className="font-mono text-[11px] text-muted-foreground">
-                      At {fps} Hz, fast limb motion is often undersampled. Prefer{" "}
-                      {RECOMMENDED_SPRINT_CAPTURE_FPS} Hz or higher for sprint-style capture when
-                      possible.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                {fps >= LOW_FPS_WARNING_THRESHOLD && fps < RECOMMENDED_SPRINT_CAPTURE_FPS && (
-                  <Alert className="border-border bg-secondary/50">
-                    <AlertTitle className="font-mono text-xs">Capture rate</AlertTitle>
-                    <AlertDescription className="font-mono text-[11px] text-muted-foreground">
-                      For explosive sprinting, {RECOMMENDED_SPRINT_CAPTURE_FPS}+ fps is recommended;
-                      current setting ({fps} Hz) may still blur feet at foot strike.
-                    </AlertDescription>
-                  </Alert>
-                )}
+                {(() => {
+                  const fpsCheck = validateFps(fps, inferredFps);
+                  if (fpsCheck.severity === "error" || fpsCheck.severity === "warn") {
+                    return (
+                      <Alert className="border-destructive/40 bg-destructive/10 text-foreground">
+                        <AlertTitle className="font-mono text-xs">
+                          {fpsCheck.severity === "error" ? "Invalid FPS" : "FPS Warning"}
+                        </AlertTitle>
+                        <AlertDescription className="font-mono text-[11px] text-muted-foreground">
+                          {fpsCheck.warning}
+                        </AlertDescription>
+                      </Alert>
+                    );
+                  }
+                  if (fpsCheck.severity === "info") {
+                    return (
+                      <Alert className="border-border bg-secondary/50">
+                        <AlertTitle className="font-mono text-xs">Capture rate</AlertTitle>
+                        <AlertDescription className="font-mono text-[11px] text-muted-foreground">
+                          {fpsCheck.warning}
+                        </AlertDescription>
+                      </Alert>
+                    );
+                  }
+                  return null;
+                })()}
                 <div className="flex flex-wrap items-end gap-4">
                 <div className="space-y-1">
                   <Label className="text-xs font-mono text-muted-foreground">FPS</Label>
@@ -329,6 +345,29 @@ const Analyze: React.FC = () => {
                   />
                   <Label htmlFor="rts" className="text-xs font-mono cursor-pointer">
                     RTS smoother (offline)
+                  </Label>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-mono text-muted-foreground">Gating</Label>
+                  <select
+                    value={gatingMode}
+                    onChange={(e) => setGatingMode(e.target.value as GatingMode)}
+                    className="h-8 text-xs font-mono bg-secondary border border-border rounded px-2 text-foreground"
+                    disabled={isProcessing}
+                  >
+                    <option value="interpolate">Interpolate</option>
+                    <option value="hold-last">Hold last</option>
+                    <option value="nan">NaN (gap)</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-2 pt-5">
+                  <Checkbox
+                    id="vis-debug"
+                    checked={showVisDebug}
+                    onCheckedChange={(c) => setShowVisDebug(c === true)}
+                  />
+                  <Label htmlFor="vis-debug" className="text-xs font-mono cursor-pointer">
+                    Visibility debug
                   </Label>
                 </div>
                 <div className="space-y-1">
@@ -409,6 +448,7 @@ const Analyze: React.FC = () => {
                     setStages(INITIAL_STAGES);
                     setRawLandmarks([]);
                     setFilteredLandmarks([]);
+                    setForwardLandmarks([]);
                     setResults([]);
                     setInferredFps(null);
                     setMujocoData(null);
@@ -495,12 +535,15 @@ const Analyze: React.FC = () => {
                     <div className="grid grid-cols-2 gap-2">
                       {results[currentFrame].jointAngles.map((j, i) => (
                         <div key={i} className="bg-secondary rounded p-2">
-                          <p className="text-[9px] font-mono text-muted-foreground truncate">{j.name}</p>
+                         <p className="text-[9px] font-mono text-muted-foreground truncate">{j.name}</p>
                           <p className="text-sm font-semibold text-foreground">
-                            {j.angleDeg.toFixed(1)}°
+                            {isNaN(j.angleDeg) ? "—" : `${j.angleDeg.toFixed(1)}°`}
                           </p>
                           <p className="text-[9px] font-mono text-primary/70">
-                            {j.velocityRadS.toFixed(2)} rad/s
+                            {isNaN(j.velocityRadS) ? "—" : `${j.velocityRadS.toFixed(2)} rad/s`}
+                          </p>
+                          <p className={`text-[8px] font-mono ${j.confidence < 0.65 ? "text-destructive" : "text-muted-foreground"}`}>
+                            vis {(j.confidence * 100).toFixed(0)}%
                           </p>
                         </div>
                       ))}
@@ -537,9 +580,39 @@ const Analyze: React.FC = () => {
             {/* Results dashboard */}
             {results.length > 0 && (
               <>
+                {showVisDebug && forwardLandmarks.length > 0 && (
+                  <Card className="bg-card border-border">
+                    <CardContent className="p-4">
+                      <h3 className="text-xs font-mono text-muted-foreground uppercase tracking-wider mb-2">
+                        Visibility Debug (per-frame min visibility)
+                      </h3>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs font-mono mb-2"
+                        onClick={() => {
+                          const report = dumpVisibilityReport(forwardLandmarks);
+                          const csv = visibilityReportCSV(report);
+                          const blob = new Blob([csv], { type: "text/csv" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = "visibility_debug.csv";
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        }}
+                      >
+                        <Download className="w-3.5 h-3.5 mr-1" /> Export Visibility CSV
+                      </Button>
+                      <p className="text-[10px] font-mono text-muted-foreground">
+                        {forwardLandmarks.length} frames • Per-joint min visibility exported for debugging low-confidence tracking.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
                 <ResultsDashboard results={results} anthropometry={anthropometry} />
                 <MuJoCoPanel
-                  filteredLandmarks={filteredLandmarks}
+                  filteredLandmarks={forwardLandmarks.length > 0 ? forwardLandmarks : filteredLandmarks}
                   fps={fps}
                   anthropometry={anthropometry}
                   weightKg={weightKg.trim() !== "" ? Number(weightKg) : undefined}
