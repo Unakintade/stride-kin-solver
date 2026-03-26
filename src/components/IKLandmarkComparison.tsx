@@ -145,9 +145,8 @@ const IKLandmarkComparison: React.FC<Props> = ({
 
     // Add IK-only joints not present in kinematics
     if (ikFrame.joints) {
-      const kinNames = new Set(kinFrame.jointAngles.map((j) => j.name));
       for (const [name, j] of Object.entries(ikFrame.joints)) {
-        if (!kinNames.has(name)) {
+        if (!matchedIkKeys.has(name)) {
           rows.push({
             joint: name,
             mocapAngleDeg: null,
