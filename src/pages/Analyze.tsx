@@ -174,7 +174,7 @@ const Analyze: React.FC = () => {
       setResults(kinResults);
 
       // Baseline kinematics (Monday logic — no gating, no homography)
-      const baselineKin = computeKinematicsBaseline(filtered, fps);
+      const baselineKin = computeKinematicsBaseline(forward, fps);
       setBaselineResults(baselineKin);
 
       updateStage("kinematics", { status: "complete", progress: 1 });
