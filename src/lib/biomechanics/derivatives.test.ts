@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { centralDiff, sgDeriv5, smartDeriv } from "./derivatives";
+import { centralDiff, movingAverage1d, sgDeriv5, smartDeriv } from "./derivatives";
 
 describe("centralDiff", () => {
   it("returns empty for empty input", () => {
@@ -59,6 +59,24 @@ describe("sgDeriv5", () => {
     for (const v of result) {
       expect(v).toBeCloseTo(6, 5);
     }
+  });
+});
+
+describe("movingAverage1d", () => {
+  it("returns empty for empty input", () => {
+    expect(movingAverage1d([], 2)).toEqual([]);
+  });
+
+  it("with halfWidth 1 smooths a spike", () => {
+    const s = [0, 0, 10, 0, 0];
+    const m = movingAverage1d(s, 1);
+    expect(m[2]).toBeCloseTo(10 / 3, 5);
+  });
+
+  it("ignores NaN in window", () => {
+    const s = [1, NaN, 3];
+    const m = movingAverage1d(s, 1);
+    expect(m[1]).toBeCloseTo(2, 5);
   });
 });
 
