@@ -25,6 +25,7 @@ import type { MuJoCoSolveResponse } from "@/lib/biomechanics/mujocoApi";
 import { detectPoseInVideo } from "@/lib/biomechanics/detection";
 import { smoothLandmarks } from "@/lib/biomechanics/filtering";
 import { computeKinematics, computeAnthropometry } from "@/lib/biomechanics/kinematics";
+import { computeKinematicsBaseline } from "@/lib/biomechanics/kinematicsBaseline";
 import {
   LOW_FPS_WARNING_THRESHOLD,
   RECOMMENDED_SPRINT_CAPTURE_FPS,
