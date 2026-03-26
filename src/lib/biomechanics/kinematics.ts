@@ -1,5 +1,5 @@
 import type { FrameLandmarks, FrameResult, JointAngle } from "./types";
-import { LIMB_SEGMENTS, JOINT_VELOCITY_LIMITS } from "./constants";
+import { LIMB_SEGMENTS, JOINT_VELOCITY_LIMITS, MAX_COM_SPEED_MS, SYMMETRIC_LIMB_PAIRS } from "./constants";
 import { landmarksVisible, minVisibility, interpolateGatedAngles, DEFAULT_VISIBILITY_THRESHOLD } from "./visibility";
 import { type Mat3, applyHomography } from "./homography";
 
