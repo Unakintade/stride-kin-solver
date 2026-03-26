@@ -12,7 +12,7 @@ import {
   ResponsiveContainer, ReferenceLine,
 } from "recharts";
 import type { FrameLandmarks, FrameResult } from "@/lib/biomechanics/types";
-import type { MuJoCoSolveResponse, MuJoCoFrameResult } from "@/lib/biomechanics/mujocoApi";
+import type { MuJoCoSolveResponse, MuJoCoFrameResult, MuJoCoJointResult } from "@/lib/biomechanics/mujocoApi";
 import { MOCAP_TARGET_LANDMARKS, LANDMARK_NAMES } from "@/lib/biomechanics/constants";
 
 /**
