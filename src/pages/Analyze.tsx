@@ -263,25 +263,32 @@ const Analyze: React.FC = () => {
             {/* Controls */}
             <Card className="bg-card border-border">
               <CardContent className="p-4 flex flex-col gap-4">
-                {fps > 0 && fps < LOW_FPS_WARNING_THRESHOLD && (
-                  <Alert className="border-amber-500/40 bg-amber-500/10 text-foreground">
-                    <AlertTitle className="font-mono text-xs">Low sampling rate</AlertTitle>
-                    <AlertDescription className="font-mono text-[11px] text-muted-foreground">
-                      At {fps} Hz, fast limb motion is often undersampled. Prefer{" "}
-                      {RECOMMENDED_SPRINT_CAPTURE_FPS} Hz or higher for sprint-style capture when
-                      possible.
-                    </AlertDescription>
-                  </Alert>
-                )}
-                {fps >= LOW_FPS_WARNING_THRESHOLD && fps < RECOMMENDED_SPRINT_CAPTURE_FPS && (
-                  <Alert className="border-border bg-secondary/50">
-                    <AlertTitle className="font-mono text-xs">Capture rate</AlertTitle>
-                    <AlertDescription className="font-mono text-[11px] text-muted-foreground">
-                      For explosive sprinting, {RECOMMENDED_SPRINT_CAPTURE_FPS}+ fps is recommended;
-                      current setting ({fps} Hz) may still blur feet at foot strike.
-                    </AlertDescription>
-                  </Alert>
-                )}
+                {(() => {
+                  const fpsCheck = validateFps(fps, inferredFps);
+                  if (fpsCheck.severity === "error" || fpsCheck.severity === "warn") {
+                    return (
+                      <Alert className="border-destructive/40 bg-destructive/10 text-foreground">
+                        <AlertTitle className="font-mono text-xs">
+                          {fpsCheck.severity === "error" ? "Invalid FPS" : "FPS Warning"}
+                        </AlertTitle>
+                        <AlertDescription className="font-mono text-[11px] text-muted-foreground">
+                          {fpsCheck.warning}
+                        </AlertDescription>
+                      </Alert>
+                    );
+                  }
+                  if (fpsCheck.severity === "info") {
+                    return (
+                      <Alert className="border-border bg-secondary/50">
+                        <AlertTitle className="font-mono text-xs">Capture rate</AlertTitle>
+                        <AlertDescription className="font-mono text-[11px] text-muted-foreground">
+                          {fpsCheck.warning}
+                        </AlertDescription>
+                      </Alert>
+                    );
+                  }
+                  return null;
+                })()}
                 <div className="flex flex-wrap items-end gap-4">
                 <div className="space-y-1">
                   <Label className="text-xs font-mono text-muted-foreground">FPS</Label>
