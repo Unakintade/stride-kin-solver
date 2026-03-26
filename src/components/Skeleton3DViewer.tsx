@@ -165,6 +165,10 @@ function SkeletonScene({ landmarks, mujocoFrame, showIMU }: {
   const imuJoints = useMemo(() => {
     if (!mujocoFrame?.joints) return [];
     const nameToIdx: Record<string, number> = {
+      pelvis: 24,
+      thigh: 26,
+      shank: 28,
+      foot: 32,
       knee: 25, left_knee: 25, right_knee: 26,
       hip: 23, left_hip: 23, right_hip: 24,
       ankle: 27, left_ankle: 27, right_ankle: 28,

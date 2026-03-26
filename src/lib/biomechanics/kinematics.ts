@@ -326,11 +326,13 @@ export function computeKinematics(
     }
   });
 
+    // CoM track (hip midpoint in metres) — shared for position + timestamp-aware velocity
+  const comTrack = buildHipComTrack(landmarks, toMetric, { planarZ: false });
+  const frameTimestamps = landmarks.map((fl) => fl.timestamp);
+
   // ── Second pass: assemble results ──
   for (let i = 0; i < landmarks.length; i++) {
     const fl = landmarks[i];
-    const ip = fl.positions;
-    const wp = fl.worldPositions;
     const warnings: string[] = [...(clampedFrames.get(i) ?? [])];
 
     const jointAngles: JointAngle[] = JOINT_DEFINITIONS.map((jd, j) => {
@@ -352,17 +354,13 @@ export function computeKinematics(
     // Stride length
     const strideLength = strideLengthMap.get(i) ?? 0;
 
-    // CoM position
-    const comImageX = (ip[23][0] + ip[24][0]) / 2;
-    const comImageY = (ip[23][1] + ip[24][1]) / 2;
-    const [comX, comY] = toMetric(comImageX, comImageY);
-    const comWorldZ = (wp[23][2] + wp[24][2]) / 2;
-    const comPosition: [number, number, number] = [comX, comY, comWorldZ];
+    const comPosition = comTrack[i];
 
     // CoM velocity via velocityFromPositionTrack (central/forward/backward diff with timestamps)
     let comVelocity: [number, number, number] = [0, 0, 0];
     if (comPositions.length >= 2) {
-      const rawComVel = velocityFromPositionTrack(comPositions, timestamps, fps, i);
+      const rawComVel = velocityFromPositionTrack(comTrack, frameTimestamps, fps, i);
+
       const comSpeed = Math.sqrt(rawComVel[0] ** 2 + rawComVel[1] ** 2 + rawComVel[2] ** 2);
       if (comSpeed > MAX_COM_SPEED_MS) {
         const scale = MAX_COM_SPEED_MS / comSpeed;

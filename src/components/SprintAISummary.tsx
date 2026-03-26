@@ -56,7 +56,7 @@ function buildAnalysisPayload(props: Props): string {
       const torques = frames.map((f) => f.joints?.[name]?.torque_nm ?? 0);
       return `- ${name}: angle [${Math.min(...angles).toFixed(1)}°, ${Math.max(...angles).toFixed(1)}°], peak torque ${Math.max(...torques.map(Math.abs)).toFixed(1)} Nm`;
     });
-    sections.push(`## MuJoCo IK + Inverse Dynamics (${frames.length} frames)\n${mujocoStats.join("\n")}`);
+    sections.push(`## Backend kinetics (${frames.length} frames)\n${mujocoStats.join("\n")}`);
 
     // GRF summary
     const grfMags = frames.map((f) => {
