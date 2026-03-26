@@ -32,6 +32,9 @@ import {
   RECOMMENDED_SPRINT_CAPTURE_FPS,
 } from "@/lib/biomechanics/constants";
 import { inferVideoFrameRate } from "@/lib/biomechanics/video";
+import { validateFps } from "@/lib/biomechanics/fpsValidation";
+import { dumpVisibilityReport, visibilityReportCSV } from "@/lib/biomechanics/debugVisibility";
+import type { GatingMode } from "@/lib/biomechanics/kinematics";
 
 const INITIAL_STAGES: PipelineStage[] = [
   { id: "detection", name: "Vision", description: "BlazePose", status: "pending", progress: 0 },
