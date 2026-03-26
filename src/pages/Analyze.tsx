@@ -448,6 +448,7 @@ const Analyze: React.FC = () => {
                     setStages(INITIAL_STAGES);
                     setRawLandmarks([]);
                     setFilteredLandmarks([]);
+                    setForwardLandmarks([]);
                     setResults([]);
                     setInferredFps(null);
                     setMujocoData(null);
