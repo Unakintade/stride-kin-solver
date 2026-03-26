@@ -115,7 +115,7 @@ const MuJoCoPanel: React.FC<Props> = ({
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-mono text-foreground flex items-center gap-2">
           <Server className="w-4 h-4 text-primary" />
-          MuJoCo Physics Backend
+          Biomechanics backend
           {isOnline === true && <Badge variant="outline" className="text-[10px] text-green-400 border-green-400/40">Online</Badge>}
           {isOnline === false && <Badge variant="outline" className="text-[10px] text-destructive border-destructive/40">Offline</Badge>}
           {isOnline === null && <Badge variant="outline" className="text-[10px] text-muted-foreground">Checking…</Badge>}
@@ -160,7 +160,7 @@ const MuJoCoPanel: React.FC<Props> = ({
             ) : (
               <>
                 <Zap className="w-3.5 h-3.5" />
-                Run MuJoCo IK + Inverse Dynamics
+                Run kinetics solve
               </>
             )}
           </Button>
@@ -253,7 +253,8 @@ const MuJoCoPanel: React.FC<Props> = ({
 
         {!isOnline && (
           <p className="text-[10px] font-mono text-muted-foreground">
-            Start the MuJoCo backend with <code className="bg-secondary px-1 rounded">docker-compose up</code> to enable physics-constrained analysis.
+            Start from <code className="bg-secondary px-1 rounded">biomech-worker</code>:{" "}
+            <code className="bg-secondary px-1 rounded">uvicorn app.main:app --host 0.0.0.0 --port 8000</code> (requires the <code className="bg-secondary px-1 rounded">mujoco</code> Python package).
           </p>
         )}
       </CardContent>
