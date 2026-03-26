@@ -547,7 +547,7 @@ const Analyze: React.FC = () => {
               <>
                 <ResultsDashboard results={results} anthropometry={anthropometry} />
                 <MuJoCoPanel
-                  filteredLandmarks={filteredLandmarks}
+                  filteredLandmarks={forwardLandmarks.length > 0 ? forwardLandmarks : filteredLandmarks}
                   fps={fps}
                   anthropometry={anthropometry}
                   weightKg={weightKg.trim() !== "" ? Number(weightKg) : undefined}
