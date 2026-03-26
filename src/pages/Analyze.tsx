@@ -554,9 +554,8 @@ const Analyze: React.FC = () => {
                   <MuJoCoCharts mujocoData={mujocoData} fps={fps} />
                 )}
                 <IKLandmarkComparison
-                  filteredLandmarks={filteredLandmarks}
                   results={results}
-                  mujocoData={mujocoData}
+                  baselineResults={baselineResults}
                   fps={fps}
                 />
                 <SprintAISummary
