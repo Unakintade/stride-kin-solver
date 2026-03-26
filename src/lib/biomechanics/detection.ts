@@ -4,24 +4,34 @@ import type { FrameLandmarks } from "./types";
 
 let poseLandmarker: any = null;
 
+const VISION_WASM_VERSION = "0.10.34";
+
 export async function initPoseDetector(): Promise<any> {
   if (poseLandmarker) return poseLandmarker;
 
   const vision = await FilesetResolver.forVisionTasks(
-    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+    `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VISION_WASM_VERSION}/wasm`
   );
 
-  poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
+  const options = {
     baseOptions: {
       modelAssetPath:
         "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task",
-      delegate: "GPU",
+      delegate: "GPU" as const,
     },
-    runningMode: "VIDEO",
+    runningMode: "VIDEO" as const,
     numPoses: 1,
     minPoseDetectionConfidence: 0.5,
     minTrackingConfidence: 0.5,
-  });
+  };
+
+  try {
+    poseLandmarker = await PoseLandmarker.createFromOptions(vision, options);
+  } catch (gpuError) {
+    console.warn("GPU delegate failed, falling back to CPU:", gpuError);
+    options.baseOptions.delegate = "CPU" as any;
+    poseLandmarker = await PoseLandmarker.createFromOptions(vision, options);
+  }
 
   return poseLandmarker;
 }
