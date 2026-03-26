@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Activity, ArrowLeft, Play, Pause, SkipForward, SkipBack } from "lucide-react";
+import { Activity, ArrowLeft, Play, Pause, SkipForward, SkipBack, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
