@@ -98,6 +98,7 @@ const Analyze: React.FC = () => {
     setStages(INITIAL_STAGES);
     setRawLandmarks([]);
     setFilteredLandmarks([]);
+    setForwardLandmarks([]);
     setResults([]);
     setCurrentFrame(0);
   }, []);
