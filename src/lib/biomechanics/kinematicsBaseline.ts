@@ -76,7 +76,7 @@ export function computeKinematics(
         }
       }
 
-      return { name: jd.name, angleDeg: angle, velocityRadS: velocity };
+      return { name: jd.name, angleDeg: angle, velocityRadS: velocity, confidence: 1 };
     });
 
     // Stride length (ankle-to-ankle distance)
