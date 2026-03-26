@@ -63,6 +63,7 @@ const Analyze: React.FC = () => {
   const [rawLandmarks, setRawLandmarks] = useState<FrameLandmarks[]>([]);
   const [filteredLandmarks, setFilteredLandmarks] = useState<FrameLandmarks[]>([]);
   const [results, setResults] = useState<FrameResult[]>([]);
+  const [baselineResults, setBaselineResults] = useState<FrameResult[]>([]);
   const [anthropometry, setAnthropometry] = useState<Record<string, number>>({});
   const [mujocoData, setMujocoData] = useState<MuJoCoSolveResponse | null>(null);
   const [currentFrame, setCurrentFrame] = useState(0);
