@@ -274,39 +274,9 @@ function SkeletonScene({ landmarks, mujocoFrame, showIMU }: {
       .map(name => ({ name, idx: nameToIdx[name] }));
   }, [mujocoFrame]);
 
-  if (!hasData) return null;
-
-  // Body-segment connections (exclude foot landmarks 29-32 — handled separately)
-  const BODY_CONNECTIONS: [number, number][] = [
-    [11, 13], [13, 15], // left arm
-    [12, 14], [14, 16], // right arm
-    [11, 12],           // shoulders
-    [23, 24],           // hips
-    [11, 23], [12, 24], // torso
-    [23, 25], [25, 27], // left leg
-    [24, 26], [26, 28], // right leg
-  ];
-
-  // Limb radius mapping for more anatomical look
-  const limbRadius = (a: number, b: number) => {
-    // torso segments thicker
-    if ((a === 11 && b === 23) || (a === 12 && b === 24)) return 0.018;
-    if (a === 11 && b === 12) return 0.016; // shoulders
-    if (a === 23 && b === 24) return 0.016; // hips
-    // thighs
-    if ((a === 23 && b === 25) || (a === 24 && b === 26)) return 0.016;
-    // shanks
-    if ((a === 25 && b === 27) || (a === 26 && b === 28)) return 0.014;
-    // upper arms
-    if ((a === 11 && b === 13) || (a === 12 && b === 14)) return 0.012;
-    // forearms
-    if ((a === 13 && b === 15) || (a === 14 && b === 16)) return 0.010;
-    return 0.012;
-  };
-
-  // Head position (midpoint of ears, offset up)
+  // Head position (midpoint of shoulders, offset up) — must be before early return
   const headPos = useMemo<[number, number, number] | null>(() => {
-    if (shiftedPositions.length < 12) return null;
+    if (shiftedPositions.length < 13) return null;
     const ls = shiftedPositions[11];
     const rs = shiftedPositions[12];
     return [
@@ -315,6 +285,26 @@ function SkeletonScene({ landmarks, mujocoFrame, showIMU }: {
       (ls[2] + rs[2]) / 2,
     ];
   }, [shiftedPositions]);
+
+  if (!hasData) return null;
+
+  const BODY_CONNECTIONS: [number, number][] = [
+    [11, 13], [13, 15], [12, 14], [14, 16],
+    [11, 12], [23, 24],
+    [11, 23], [12, 24],
+    [23, 25], [25, 27], [24, 26], [26, 28],
+  ];
+
+  const limbRadius = (a: number, b: number) => {
+    if ((a === 11 && b === 23) || (a === 12 && b === 24)) return 0.018;
+    if (a === 11 && b === 12) return 0.016;
+    if (a === 23 && b === 24) return 0.016;
+    if ((a === 23 && b === 25) || (a === 24 && b === 26)) return 0.016;
+    if ((a === 25 && b === 27) || (a === 26 && b === 28)) return 0.014;
+    if ((a === 11 && b === 13) || (a === 12 && b === 14)) return 0.012;
+    if ((a === 13 && b === 15) || (a === 14 && b === 16)) return 0.010;
+    return 0.012;
+  };
 
   const SKIN_COLOR = new THREE.Color("hsl(200, 50%, 55%)");
 
