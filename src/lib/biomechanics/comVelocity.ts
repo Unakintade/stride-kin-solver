@@ -1,6 +1,41 @@
 import type { FrameLandmarks } from "./types";
 
 /**
+ * Symmetric moving average per axis (reduces noise before differentiating for velocity).
+ */
+export function smoothComTrackMovingAverage(
+  track: ReadonlyArray<readonly [number, number, number]>,
+  halfWidth: number
+): [number, number, number][] {
+  if (halfWidth <= 0 || track.length === 0) {
+    return track.map((p) => [p[0], p[1], p[2]] as [number, number, number]);
+  }
+  const n = track.length;
+  const out: [number, number, number][] = [];
+  for (let i = 0; i < n; i++) {
+    let sx = 0,
+      sy = 0,
+      sz = 0,
+      c = 0;
+    for (let j = Math.max(0, i - halfWidth); j <= Math.min(n - 1, i + halfWidth); j++) {
+      const p = track[j];
+      if (Number.isFinite(p[0]) && Number.isFinite(p[1]) && Number.isFinite(p[2])) {
+        sx += p[0];
+        sy += p[1];
+        sz += p[2];
+        c++;
+      }
+    }
+    if (c > 0) {
+      out.push([sx / c, sy / c, sz / c]);
+    } else {
+      out.push([track[i][0], track[i][1], track[i][2]]);
+    }
+  }
+  return out;
+}
+
+/**
  * Time-series velocity for a 3D point: central difference on interior frames,
  * forward / backward difference on edges. Uses frame timestamps when available.
  */
