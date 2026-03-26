@@ -24,6 +24,7 @@ import type { Mat3 } from "@/lib/biomechanics/homography";
 import type { MuJoCoSolveResponse } from "@/lib/biomechanics/mujocoApi";
 import { detectPoseInVideo } from "@/lib/biomechanics/detection";
 import { smoothLandmarks } from "@/lib/biomechanics/filtering";
+import type { SmoothLandmarksResult } from "@/lib/biomechanics/filtering";
 import { computeKinematics, computeAnthropometry } from "@/lib/biomechanics/kinematics";
 import { computeKinematics as computeKinematicsBaseline } from "@/lib/biomechanics/kinematicsBaseline";
 import {
@@ -138,13 +139,13 @@ const Analyze: React.FC = () => {
 
       // Stage 2: Filtering
       updateStage("filtering", { status: "active", progress: 0 });
-      const filtered = smoothLandmarks(
+      const { smoothed, forward } = smoothLandmarks(
         detected,
         fps,
         (progress) => updateStage("filtering", { progress }),
         { useRtsSmoother }
       );
-      setFilteredLandmarks(filtered);
+      setFilteredLandmarks(smoothed);
       updateStage("filtering", { status: "complete", progress: 1 });
 
       // Stage 3: Kinematics
@@ -152,7 +153,7 @@ const Analyze: React.FC = () => {
       const fw = fieldWidthMeters.trim();
       const fieldM = fw === "" ? NaN : Number(fw);
       const kinResults = computeKinematics(
-        filtered,
+        forward,
         fps,
         (progress) => updateStage("kinematics", { progress }),
         {
@@ -173,13 +174,13 @@ const Analyze: React.FC = () => {
       setResults(kinResults);
 
       // Baseline kinematics (Monday logic — no gating, no homography)
-      const baselineKin = computeKinematicsBaseline(filtered, fps);
+      const baselineKin = computeKinematicsBaseline(forward, fps);
       setBaselineResults(baselineKin);
 
       updateStage("kinematics", { status: "complete", progress: 1 });
 
       // Anthropometry
-      const anthro = computeAnthropometry(filtered);
+      const anthro = computeAnthropometry(forward);
       setAnthropometry(anthro);
 
       // Stage 4: Results

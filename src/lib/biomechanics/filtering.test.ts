@@ -29,14 +29,17 @@ describe("smoothLandmarks", () => {
     for (let i = 0; i < 15; i++) {
       frames.push(makeFrame(i, i * 0.01 + (i % 3) * 0.001));
     }
-    const out = smoothLandmarks(frames, 30, undefined, { useRtsSmoother: true });
-    expect(out).toHaveLength(15);
-    expect(Number.isFinite(out[7].worldPositions[11][2])).toBe(true);
+    const { smoothed, forward } = smoothLandmarks(frames, 30, undefined, { useRtsSmoother: true });
+    expect(smoothed).toHaveLength(15);
+    expect(forward).toHaveLength(15);
+    expect(Number.isFinite(smoothed[7].worldPositions[11][2])).toBe(true);
+    expect(Number.isFinite(forward[7].worldPositions[11][2])).toBe(true);
   });
 
   it("forward-only mode matches length", () => {
     const frames = [makeFrame(0, 0), makeFrame(1, 0.1), makeFrame(2, 0.2)];
-    const out = smoothLandmarks(frames, 60, undefined, { useRtsSmoother: false });
-    expect(out).toHaveLength(3);
+    const { smoothed, forward } = smoothLandmarks(frames, 60, undefined, { useRtsSmoother: false });
+    expect(smoothed).toHaveLength(3);
+    expect(forward).toHaveLength(3);
   });
 });
