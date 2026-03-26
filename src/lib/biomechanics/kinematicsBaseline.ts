@@ -176,7 +176,7 @@ export function computeKinematicsBaseline(
         }
       }
 
-      return { name: jd.name, angleDeg: angle, velocityRadS: velocity };
+      return { name: jd.name, angleDeg: angle, velocityRadS: velocity, confidence: 1.0 };
     });
 
     const strideLength = strideLengthMap.get(i) ?? 0;
