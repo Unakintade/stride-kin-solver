@@ -25,6 +25,7 @@ import type { MuJoCoSolveResponse } from "@/lib/biomechanics/mujocoApi";
 import { detectPoseInVideo } from "@/lib/biomechanics/detection";
 import { smoothLandmarks } from "@/lib/biomechanics/filtering";
 import { computeKinematics, computeAnthropometry } from "@/lib/biomechanics/kinematics";
+import { computeKinematicsBaseline } from "@/lib/biomechanics/kinematicsBaseline";
 import {
   LOW_FPS_WARNING_THRESHOLD,
   RECOMMENDED_SPRINT_CAPTURE_FPS,
@@ -62,6 +63,7 @@ const Analyze: React.FC = () => {
   const [rawLandmarks, setRawLandmarks] = useState<FrameLandmarks[]>([]);
   const [filteredLandmarks, setFilteredLandmarks] = useState<FrameLandmarks[]>([]);
   const [results, setResults] = useState<FrameResult[]>([]);
+  const [baselineResults, setBaselineResults] = useState<FrameResult[]>([]);
   const [anthropometry, setAnthropometry] = useState<Record<string, number>>({});
   const [mujocoData, setMujocoData] = useState<MuJoCoSolveResponse | null>(null);
   const [currentFrame, setCurrentFrame] = useState(0);
@@ -169,6 +171,11 @@ const Analyze: React.FC = () => {
         }
       );
       setResults(kinResults);
+
+      // Baseline kinematics (Monday logic — no gating, no homography)
+      const baselineKin = computeKinematicsBaseline(filtered, fps);
+      setBaselineResults(baselineKin);
+
       updateStage("kinematics", { status: "complete", progress: 1 });
 
       // Anthropometry
@@ -547,9 +554,8 @@ const Analyze: React.FC = () => {
                   <MuJoCoCharts mujocoData={mujocoData} fps={fps} />
                 )}
                 <IKLandmarkComparison
-                  filteredLandmarks={filteredLandmarks}
                   results={results}
-                  mujocoData={mujocoData}
+                  baselineResults={baselineResults}
                   fps={fps}
                 />
                 <SprintAISummary
