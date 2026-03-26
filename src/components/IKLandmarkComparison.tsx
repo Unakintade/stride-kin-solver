@@ -15,6 +15,70 @@ import type { FrameLandmarks, FrameResult } from "@/lib/biomechanics/types";
 import type { MuJoCoSolveResponse, MuJoCoFrameResult } from "@/lib/biomechanics/mujocoApi";
 import { MOCAP_TARGET_LANDMARKS, LANDMARK_NAMES } from "@/lib/biomechanics/constants";
 
+/**
+ * Map kinematics joint names (e.g. "Left Knee Extension") to MuJoCo joint
+ * keys (e.g. "knee", "l_knee", "left_knee") with fuzzy matching.
+ */
+function findIKJoint(
+  kinName: string,
+  ikJoints: Record<string, MuJoCoJointResult>,
+): MuJoCoJointResult | null {
+  // Direct match
+  if (kinName in ikJoints) return ikJoints[kinName];
+
+  const lower = kinName.toLowerCase();
+
+  // Build candidate tokens from the kinematics name
+  // e.g. "Left Knee Extension" → ["left", "knee", "extension"]
+  const tokens = lower.split(/[\s_]+/);
+
+  // Try to find the best matching IK joint key
+  const ikKeys = Object.keys(ikJoints);
+
+  // Strategy 1: exact key match after normalising
+  for (const key of ikKeys) {
+    if (key.toLowerCase() === lower) return ikJoints[key];
+  }
+
+  // Strategy 2: IK key is a substring of the kinematics name or vice-versa
+  for (const key of ikKeys) {
+    const kl = key.toLowerCase();
+    if (lower.includes(kl) || kl.includes(lower.replace(/\s+/g, "_"))) {
+      return ikJoints[key];
+    }
+  }
+
+  // Strategy 3: match on the anatomical part (knee, hip, ankle, elbow, shoulder)
+  const anatomical = tokens.find((t) =>
+    ["knee", "hip", "ankle", "elbow", "shoulder", "wrist"].includes(t),
+  );
+  const side = tokens.find((t) => ["left", "right", "l", "r"].includes(t));
+
+  if (anatomical) {
+    for (const key of ikKeys) {
+      const kl = key.toLowerCase();
+      const keyHasPart = kl.includes(anatomical);
+      if (!keyHasPart) continue;
+
+      // If we know the side, prefer matching side; otherwise take first match
+      if (side) {
+        const sideChar = side[0]; // 'l' or 'r'
+        if (kl.startsWith(sideChar) || kl.includes(side) || kl.includes(`${sideChar}_`)) {
+          return ikJoints[key];
+        }
+      } else {
+        return ikJoints[key];
+      }
+    }
+    // Fallback: match anatomical part without side constraint
+    for (const key of ikKeys) {
+      if (key.toLowerCase().includes(anatomical)) return ikJoints[key];
+    }
+  }
+
+  return null;
+}
+
 interface Props {
   filteredLandmarks: FrameLandmarks[];
   results: FrameResult[];
