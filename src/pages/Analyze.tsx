@@ -368,6 +368,7 @@ const Analyze: React.FC = () => {
                   <Label htmlFor="vis-debug" className="text-xs font-mono cursor-pointer">
                     Visibility debug
                   </Label>
+                </div>
                 <div className="space-y-1">
                   <Label className="text-xs font-mono text-muted-foreground">Max Frames</Label>
                   <Input
