@@ -182,6 +182,13 @@ export interface SmoothLandmarksOptions {
   useRtsSmoother?: boolean;
 }
 
+export interface SmoothLandmarksResult {
+  /** RTS-smoothed landmarks — visually smooth, best for skeleton overlay. */
+  smoothed: FrameLandmarks[];
+  /** Forward-only Kalman landmarks — preserves sharper transients for derivatives/kinematics. */
+  forward: FrameLandmarks[];
+}
+
 /**
  * Smooth world landmark positions with a constant-acceleration Kalman filter per axis,
  * optionally followed by an RTS smoother for non-causal refinement.
