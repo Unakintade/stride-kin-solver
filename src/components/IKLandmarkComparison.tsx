@@ -123,9 +123,15 @@ const IKLandmarkComparison: React.FC<Props> = ({
       confidence: number | null;
     }[] = [];
 
-    // Match kinematic joint names to MuJoCo joint names
+    // Match kinematic joint names to MuJoCo joint names (fuzzy)
+    const matchedIkKeys = new Set<string>();
     for (const ja of kinFrame.jointAngles) {
-      const ikJoint = ikFrame.joints?.[ja.name];
+      const ikJoint = ikFrame.joints ? findIKJoint(ja.name, ikFrame.joints) : null;
+      if (ikJoint) {
+        // track which IK keys were matched
+        const key = Object.entries(ikFrame.joints ?? {}).find(([, v]) => v === ikJoint)?.[0];
+        if (key) matchedIkKeys.add(key);
+      }
       rows.push({
         joint: ja.name,
         mocapAngleDeg: ja.angleDeg,
