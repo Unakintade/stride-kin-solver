@@ -180,7 +180,7 @@ const Analyze: React.FC = () => {
       updateStage("kinematics", { status: "complete", progress: 1 });
 
       // Anthropometry
-      const anthro = computeAnthropometry(filtered);
+      const anthro = computeAnthropometry(forward);
       setAnthropometry(anthro);
 
       // Stage 4: Results
