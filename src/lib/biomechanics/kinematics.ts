@@ -54,6 +54,14 @@ const JOINT_DEFINITIONS: { name: string; landmarks: [number, number, number]; li
   { name: "Right Ankle Flexion", landmarks: [26, 28, 32], limitKey: "ankle_plantarflexion" },
 ];
 
+function toReportedJointAngle(name: string, rawAngleDeg: number): number {
+  if (name.includes("Knee Extension")) {
+    return Math.max(0, 180 - rawAngleDeg);
+  }
+
+  return rawAngleDeg;
+}
+
 /**
  * Estimate a pixels-to-meters scale factor by comparing world-space segment
  * lengths to their image-space equivalents, averaged over the first N frames.
@@ -237,7 +245,10 @@ export function computeKinematics(
       const vis = landmarksVisible(fl, jd.landmarks, visThresh);
       if (vis) {
         rawAnglesPerJoint[j].push(
-          angleBetween(wp[jd.landmarks[0]], wp[jd.landmarks[1]], wp[jd.landmarks[2]])
+          toReportedJointAngle(
+            jd.name,
+            angleBetween(wp[jd.landmarks[0]], wp[jd.landmarks[1]], wp[jd.landmarks[2]])
+          )
         );
       } else {
         rawAnglesPerJoint[j].push(null);

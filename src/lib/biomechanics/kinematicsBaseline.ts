@@ -32,10 +32,18 @@ const JOINT_DEFINITIONS: { name: string; landmarks: [number, number, number]; li
   { name: "Right Ankle Flexion", landmarks: [26, 28, 32], limitKey: "ankle_plantarflexion" },
 ];
 
+function toReportedJointAngle(name: string, rawAngleDeg: number): number {
+  if (name.includes("Knee Extension")) {
+    return Math.max(0, 180 - rawAngleDeg);
+  }
+
+  return rawAngleDeg;
+}
+
 /**
  * Compute kinematic results from smoothed landmarks.
  */
-export function computeKinematics(
+export function computeKinematicsBaseline(
   landmarks: FrameLandmarks[],
   fps: number,
   onProgress?: (progress: number) => void
@@ -50,14 +58,20 @@ export function computeKinematics(
 
     // Joint angles
     const jointAngles: JointAngle[] = JOINT_DEFINITIONS.map((jd) => {
-      const angle = angleBetween(wp[jd.landmarks[0]], wp[jd.landmarks[1]], wp[jd.landmarks[2]]);
+      const angle = toReportedJointAngle(
+        jd.name,
+        angleBetween(wp[jd.landmarks[0]], wp[jd.landmarks[1]], wp[jd.landmarks[2]])
+      );
 
       // Angular velocity via finite difference
       let velocity = 0;
       if (i > 0) {
         const prevWp = landmarks[i - 1].worldPositions;
-        const prevAngle = angleBetween(
-          prevWp[jd.landmarks[0]], prevWp[jd.landmarks[1]], prevWp[jd.landmarks[2]]
+        const prevAngle = toReportedJointAngle(
+          jd.name,
+          angleBetween(
+            prevWp[jd.landmarks[0]], prevWp[jd.landmarks[1]], prevWp[jd.landmarks[2]]
+          )
         );
         velocity = ((angle - prevAngle) * Math.PI) / (180 * dt);
 
@@ -70,7 +84,7 @@ export function computeKinematics(
         }
       }
 
-      return { name: jd.name, angleDeg: angle, velocityRadS: velocity };
+      return { name: jd.name, angleDeg: angle, velocityRadS: velocity, confidence: 1 };
     });
 
     // Stride length (ankle-to-ankle distance)
@@ -109,6 +123,8 @@ export function computeKinematics(
 
   return results;
 }
+
+export { computeKinematicsBaseline as computeKinematics };
 
 /**
  * Compute anthropometric measurements from landmarks.
