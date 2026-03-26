@@ -318,7 +318,7 @@ const Analyze: React.FC = () => {
                       placeholder="e.g. 10"
                       value={fieldWidthMeters}
                       onChange={(e) => setFieldWidthMeters(e.target.value)}
-                      className="h-8 text-sm font-mono flex-1"
+                      className="h-8 text-sm font-mono flex-1 min-w-[8rem]"
                       disabled={isProcessing}
                     />
                     {!calibration.isCalibrating && !homographyCal.isCalibrating && calibration.triggerButton}
