@@ -8,7 +8,7 @@ export async function initPoseDetector(): Promise<any> {
   if (poseLandmarker) return poseLandmarker;
 
   const vision = await FilesetResolver.forVisionTasks(
-    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
   );
 
   poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
