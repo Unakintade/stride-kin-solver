@@ -43,6 +43,105 @@ function JointSphere({ position, color, size = 0.015 }: {
   );
 }
 
+/* ─── Capsule Limb Segment ────────────────────────── */
+function LimbCapsule({ start, end, radius = 0.012, color }: {
+  start: [number, number, number];
+  end: [number, number, number];
+  radius?: number;
+  color: THREE.Color;
+}) {
+  const midpoint = useMemo<[number, number, number]>(() => [
+    (start[0] + end[0]) / 2,
+    (start[1] + end[1]) / 2,
+    (start[2] + end[2]) / 2,
+  ], [start, end]);
+
+  const length = useMemo(() => {
+    const dx = end[0] - start[0];
+    const dy = end[1] - start[1];
+    const dz = end[2] - start[2];
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }, [start, end]);
+
+  const quaternion = useMemo(() => {
+    const dir = new THREE.Vector3(
+      end[0] - start[0],
+      end[1] - start[1],
+      end[2] - start[2],
+    ).normalize();
+    const q = new THREE.Quaternion();
+    q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+    return q;
+  }, [start, end]);
+
+  if (length < 0.001) return null;
+
+  return (
+    <mesh position={midpoint} quaternion={quaternion}>
+      <capsuleGeometry args={[radius, length - radius * 2, 6, 12]} />
+      <meshStandardMaterial
+        color={color}
+        emissive={color}
+        emissiveIntensity={0.15}
+        roughness={0.6}
+        metalness={0.1}
+      />
+    </mesh>
+  );
+}
+
+/* ─── Foot mesh (a small flat wedge shape) ────────── */
+function FootMesh({ anklePos, heelPos, toePos, color }: {
+  anklePos: [number, number, number];
+  heelPos: [number, number, number];
+  toePos: [number, number, number];
+  color: THREE.Color;
+}) {
+  // Build a small foot shape from ankle→heel and ankle→toe
+  // Foot direction: heel→toe, keep it grounded
+  const footDir = useMemo(() => {
+    const dir = new THREE.Vector3(
+      toePos[0] - heelPos[0],
+      0, // keep foot flat on ground plane
+      toePos[2] - heelPos[2],
+    );
+    const len = dir.length();
+    // Clamp foot length to something reasonable (max ~0.08m)
+    const clampedLen = Math.min(len, 0.08);
+    if (len > 0.001) dir.normalize().multiplyScalar(clampedLen);
+    return dir;
+  }, [heelPos, toePos]);
+
+  const footLen = footDir.length();
+  if (footLen < 0.005) return null;
+
+  const center = useMemo<[number, number, number]>(() => [
+    anklePos[0] + footDir.x * 0.3,
+    anklePos[1] - 0.005, // slightly below ankle
+    anklePos[2] + footDir.z * 0.3,
+  ], [anklePos, footDir]);
+
+  const quaternion = useMemo(() => {
+    const forward = footDir.clone().normalize();
+    const q = new THREE.Quaternion();
+    q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), forward);
+    return q;
+  }, [footDir]);
+
+  return (
+    <mesh position={center} quaternion={quaternion}>
+      <boxGeometry args={[0.03, 0.012, footLen]} />
+      <meshStandardMaterial
+        color={color}
+        emissive={color}
+        emissiveIntensity={0.15}
+        roughness={0.7}
+        metalness={0.05}
+      />
+    </mesh>
+  );
+}
+
 /* ─── GRF Arrow ───────────────────────────────────── */
 function GRFArrow({ origin, force, color }: {
   origin: [number, number, number];
