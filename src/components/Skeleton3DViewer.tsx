@@ -113,6 +113,20 @@ function FootMesh({ anklePos, heelPos, toePos, color }: {
   }, [heelPos, toePos]);
 
   const footLen = footDir.length();
+
+  const center = useMemo<[number, number, number]>(() => [
+    anklePos[0] + footDir.x * 0.3,
+    anklePos[1] - 0.005,
+    anklePos[2] + footDir.z * 0.3,
+  ], [anklePos, footDir]);
+
+  const quaternion = useMemo(() => {
+    const forward = footDir.clone().normalize();
+    const q = new THREE.Quaternion();
+    q.setFromUnitVectors(new THREE.Vector3(0, 0, 1), forward);
+    return q;
+  }, [footDir]);
+
   if (footLen < 0.005) return null;
 
   const center = useMemo<[number, number, number]>(() => [
