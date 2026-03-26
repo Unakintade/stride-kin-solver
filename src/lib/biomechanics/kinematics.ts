@@ -1,5 +1,5 @@
 import type { FrameLandmarks, FrameResult, JointAngle } from "./types";
-import { LIMB_SEGMENTS, JOINT_VELOCITY_LIMITS } from "./constants";
+import { LIMB_SEGMENTS, JOINT_VELOCITY_LIMITS, MAX_COM_SPEED_MS, SYMMETRIC_LIMB_PAIRS } from "./constants";
 import { landmarksVisible, minVisibility, interpolateGatedAngles, DEFAULT_VISIBILITY_THRESHOLD } from "./visibility";
 import { type Mat3, applyHomography } from "./homography";
 
@@ -263,13 +263,17 @@ export function computeKinematics(
       let velocity = 0;
       if (i > 0) {
         const prevAngle = interpAngles[j][i - 1];
-        velocity = ((angle - prevAngle) * Math.PI) / (180 * dt);
+        const rawVelocity = ((angle - prevAngle) * Math.PI) / (180 * dt);
 
         const limit = JOINT_VELOCITY_LIMITS[jd.limitKey] ?? JOINT_VELOCITY_LIMITS.default;
-        if (Math.abs(velocity) > limit) {
+        if (Math.abs(rawVelocity) > limit) {
+          // Clamp to physiological limit instead of passing artifact through
+          velocity = Math.sign(rawVelocity) * limit;
           warnings.push(
-            `${jd.name}: ${Math.abs(velocity).toFixed(1)} rad/s exceeds limit ${limit} rad/s`
+            `${jd.name}: velocity clamped from ${Math.abs(rawVelocity).toFixed(1)} to ${limit} rad/s (artifact)`
           );
+        } else {
+          velocity = rawVelocity;
         }
       }
 
@@ -291,15 +295,26 @@ export function computeKinematics(
 
     const comPosition: [number, number, number] = [comX, comY, comWorldZ];
 
-    // CoM velocity via finite difference
+    // CoM velocity via finite difference, clamped to physiological max
     let comVelocity: [number, number, number] = [0, 0, 0];
     if (i > 0) {
       const prev = results[i - 1];
-      comVelocity = [
+      const rawComVel: [number, number, number] = [
         (comPosition[0] - prev.comPosition[0]) / dt,
         (comPosition[1] - prev.comPosition[1]) / dt,
         (comPosition[2] - prev.comPosition[2]) / dt,
       ];
+      const comSpeed = Math.sqrt(rawComVel[0] ** 2 + rawComVel[1] ** 2 + rawComVel[2] ** 2);
+      if (comSpeed > MAX_COM_SPEED_MS) {
+        // Scale down to max plausible speed, preserving direction
+        const scale = MAX_COM_SPEED_MS / comSpeed;
+        comVelocity = [rawComVel[0] * scale, rawComVel[1] * scale, rawComVel[2] * scale];
+        warnings.push(
+          `CoM speed clamped from ${comSpeed.toFixed(1)} to ${MAX_COM_SPEED_MS} m/s (artifact)`
+        );
+      } else {
+        comVelocity = rawComVel;
+      }
     }
 
     results.push({
@@ -344,6 +359,15 @@ export function computeAnthropometry(
   for (const [segName, lengths] of Object.entries(measurements)) {
     if (lengths.length > 0) {
       avgLengths[segName] = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+    }
+  }
+
+  // Symmetrize paired limbs to mitigate monocular perspective distortion
+  for (const [leftKey, rightKey] of SYMMETRIC_LIMB_PAIRS) {
+    if (avgLengths[leftKey] != null && avgLengths[rightKey] != null) {
+      const mean = (avgLengths[leftKey] + avgLengths[rightKey]) / 2;
+      avgLengths[leftKey] = mean;
+      avgLengths[rightKey] = mean;
     }
   }
 
