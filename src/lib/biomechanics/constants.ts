@@ -54,7 +54,7 @@ export const SKELETON_CONNECTIONS: [number, number][] = [
   [27, 31], [28, 32], // foot index
 ];
 
-// Physiological joint velocity limits (rad/s)
+// Physiological joint velocity limits (rad/s) — used to clamp artifact spikes
 export const JOINT_VELOCITY_LIMITS: Record<string, number> = {
   hip_flexion: 20.0,
   knee_extension: 25.0,
@@ -63,6 +63,17 @@ export const JOINT_VELOCITY_LIMITS: Record<string, number> = {
   elbow_flexion: 20.0,
   default: 30.0,
 };
+
+/** Maximum plausible sprint CoM speed (m/s). Anything above is a tracking artifact. */
+export const MAX_COM_SPEED_MS = 15.0;
+
+/** Paired limb segments for symmetry averaging (left key → right key). */
+export const SYMMETRIC_LIMB_PAIRS: [string, string][] = [
+  ["left_upper_arm", "right_upper_arm"],
+  ["left_forearm", "right_forearm"],
+  ["left_thigh", "right_thigh"],
+  ["left_shank", "right_shank"],
+];
 
 // Kalman filter defaults
 export const KF_PROCESS_NOISE_STD = 0.5;

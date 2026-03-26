@@ -362,6 +362,15 @@ export function computeAnthropometry(
     }
   }
 
+  // Symmetrize paired limbs to mitigate monocular perspective distortion
+  for (const [leftKey, rightKey] of SYMMETRIC_LIMB_PAIRS) {
+    if (avgLengths[leftKey] != null && avgLengths[rightKey] != null) {
+      const mean = (avgLengths[leftKey] + avgLengths[rightKey]) / 2;
+      avgLengths[leftKey] = mean;
+      avgLengths[rightKey] = mean;
+    }
+  }
+
   return avgLengths;
 }
 
