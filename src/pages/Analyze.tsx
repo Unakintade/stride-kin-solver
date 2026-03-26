@@ -533,12 +533,15 @@ const Analyze: React.FC = () => {
                     <div className="grid grid-cols-2 gap-2">
                       {results[currentFrame].jointAngles.map((j, i) => (
                         <div key={i} className="bg-secondary rounded p-2">
-                          <p className="text-[9px] font-mono text-muted-foreground truncate">{j.name}</p>
+                         <p className="text-[9px] font-mono text-muted-foreground truncate">{j.name}</p>
                           <p className="text-sm font-semibold text-foreground">
-                            {j.angleDeg.toFixed(1)}°
+                            {isNaN(j.angleDeg) ? "—" : `${j.angleDeg.toFixed(1)}°`}
                           </p>
                           <p className="text-[9px] font-mono text-primary/70">
-                            {j.velocityRadS.toFixed(2)} rad/s
+                            {isNaN(j.velocityRadS) ? "—" : `${j.velocityRadS.toFixed(2)} rad/s`}
+                          </p>
+                          <p className={`text-[8px] font-mono ${j.confidence < 0.65 ? "text-destructive" : "text-muted-foreground"}`}>
+                            vis {(j.confidence * 100).toFixed(0)}%
                           </p>
                         </div>
                       ))}
