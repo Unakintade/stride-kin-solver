@@ -347,6 +347,28 @@ const Analyze: React.FC = () => {
                   </Label>
                 </div>
                 <div className="space-y-1">
+                  <Label className="text-xs font-mono text-muted-foreground">Gating</Label>
+                  <select
+                    value={gatingMode}
+                    onChange={(e) => setGatingMode(e.target.value as GatingMode)}
+                    className="h-8 text-xs font-mono bg-secondary border border-border rounded px-2 text-foreground"
+                    disabled={isProcessing}
+                  >
+                    <option value="interpolate">Interpolate</option>
+                    <option value="hold-last">Hold last</option>
+                    <option value="nan">NaN (gap)</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-2 pt-5">
+                  <Checkbox
+                    id="vis-debug"
+                    checked={showVisDebug}
+                    onCheckedChange={(c) => setShowVisDebug(c === true)}
+                  />
+                  <Label htmlFor="vis-debug" className="text-xs font-mono cursor-pointer">
+                    Visibility debug
+                  </Label>
+                <div className="space-y-1">
                   <Label className="text-xs font-mono text-muted-foreground">Max Frames</Label>
                   <Input
                     type="number"
