@@ -281,26 +281,120 @@ function SkeletonScene({ landmarks, mujocoFrame, showIMU }: {
 
   if (!hasData) return null;
 
+  // Body-segment connections (exclude foot landmarks 29-32 — handled separately)
+  const BODY_CONNECTIONS: [number, number][] = [
+    [11, 13], [13, 15], // left arm
+    [12, 14], [14, 16], // right arm
+    [11, 12],           // shoulders
+    [23, 24],           // hips
+    [11, 23], [12, 24], // torso
+    [23, 25], [25, 27], // left leg
+    [24, 26], [26, 28], // right leg
+  ];
+
+  // Limb radius mapping for more anatomical look
+  const limbRadius = (a: number, b: number) => {
+    // torso segments thicker
+    if ((a === 11 && b === 23) || (a === 12 && b === 24)) return 0.018;
+    if (a === 11 && b === 12) return 0.016; // shoulders
+    if (a === 23 && b === 24) return 0.016; // hips
+    // thighs
+    if ((a === 23 && b === 25) || (a === 24 && b === 26)) return 0.016;
+    // shanks
+    if ((a === 25 && b === 27) || (a === 26 && b === 28)) return 0.014;
+    // upper arms
+    if ((a === 11 && b === 13) || (a === 12 && b === 14)) return 0.012;
+    // forearms
+    if ((a === 13 && b === 15) || (a === 14 && b === 16)) return 0.010;
+    return 0.012;
+  };
+
+  // Head position (midpoint of ears, offset up)
+  const headPos = useMemo<[number, number, number] | null>(() => {
+    if (shiftedPositions.length < 12) return null;
+    const ls = shiftedPositions[11];
+    const rs = shiftedPositions[12];
+    return [
+      (ls[0] + rs[0]) / 2,
+      Math.max(ls[1], rs[1]) + 0.12,
+      (ls[2] + rs[2]) / 2,
+    ];
+  }, [shiftedPositions]);
+
+  const SKIN_COLOR = new THREE.Color("hsl(200, 50%, 55%)");
+
   return (
     <group>
-      {/* Joint spheres */}
+      {/* Joint spheres — only at major joints, skip face & foot sub-landmarks */}
       {shiftedPositions.map((pos, i) => {
-        if (i < 11 || (landmarks.visibility?.[i] ?? 0) < 0.3) return null;
-        return <JointSphere key={i} position={pos} color={JOINT_COLOR} />;
+        if (i < 11 || i > 28) return null; // skip face (0-10) and foot details (29-32)
+        if ((landmarks.visibility?.[i] ?? 0) < 0.3) return null;
+        const size = (i === 11 || i === 12 || i === 23 || i === 24) ? 0.018 : 0.014;
+        return <JointSphere key={i} position={pos} color={JOINT_COLOR} size={size} />;
       })}
 
-      {/* Bones */}
-      {SKELETON_CONNECTIONS.map(([a, b], i) => {
+      {/* Head */}
+      {headPos && (
+        <mesh position={headPos}>
+          <sphereGeometry args={[0.045, 16, 16]} />
+          <meshStandardMaterial
+            color={SKIN_COLOR}
+            emissive={SKIN_COLOR}
+            emissiveIntensity={0.15}
+            roughness={0.6}
+          />
+        </mesh>
+      )}
+
+      {/* Neck (shoulders midpoint → head) */}
+      {headPos && shiftedPositions.length >= 13 && (
+        <LimbCapsule
+          start={[
+            (shiftedPositions[11][0] + shiftedPositions[12][0]) / 2,
+            (shiftedPositions[11][1] + shiftedPositions[12][1]) / 2,
+            (shiftedPositions[11][2] + shiftedPositions[12][2]) / 2,
+          ]}
+          end={[headPos[0], headPos[1] - 0.04, headPos[2]]}
+          radius={0.012}
+          color={SKIN_COLOR}
+        />
+      )}
+
+      {/* Capsule limbs */}
+      {BODY_CONNECTIONS.map(([a, b], i) => {
         if ((landmarks.visibility?.[a] ?? 0) < 0.3 || (landmarks.visibility?.[b] ?? 0) < 0.3) return null;
         return (
-          <Line
-            key={`bone-${i}`}
-            points={[shiftedPositions[a], shiftedPositions[b]]}
+          <LimbCapsule
+            key={`limb-${i}`}
+            start={shiftedPositions[a]}
+            end={shiftedPositions[b]}
+            radius={limbRadius(a, b)}
             color={BONE_COLOR}
-            lineWidth={2}
           />
         );
       })}
+
+      {/* Left foot */}
+      {shiftedPositions[27] && shiftedPositions[29] && shiftedPositions[31] &&
+       (landmarks.visibility?.[27] ?? 0) >= 0.3 && (
+        <FootMesh
+          anklePos={shiftedPositions[27]}
+          heelPos={shiftedPositions[29]}
+          toePos={shiftedPositions[31]}
+          color={BONE_COLOR}
+        />
+      )}
+
+      {/* Right foot */}
+      {shiftedPositions[28] && shiftedPositions[30] && shiftedPositions[32] &&
+       (landmarks.visibility?.[28] ?? 0) >= 0.3 && (
+        <FootMesh
+          anklePos={shiftedPositions[28]}
+          heelPos={shiftedPositions[30]}
+          toePos={shiftedPositions[32]}
+          color={BONE_COLOR}
+        />
+      )}
 
       {/* CoM marker */}
       {mujocoFrame?.com_position && (
