@@ -271,6 +271,25 @@ export function computeKinematics(
     }
   }
 
+  
+  // Interpolate gated frames per joint
+  const interpAngles: number[][] = rawAnglesPerJoint.map((series) =>
+    interpolateGatedAngles(series)
+  );
+
+  const hasMetricGroundPlane =
+    H != null ||
+    Boolean(
+      cal &&
+        cal.fieldWidthMeters > 0 &&
+        cal.videoWidthPx > 0 &&
+        cal.videoHeightPx > 0
+    );
+  const comPositions = buildHipComTrack(landmarks, toMetric, {
+    planarZ: hasMetricGroundPlane,
+  });
+  const timestamps = landmarks.map((fl) => fl.timestamp);
+
   // Apply selected gating strategy
   const gatedAngles: number[][] = rawAnglesPerJoint.map((series) =>
     applyGating(series, gatingMode)
