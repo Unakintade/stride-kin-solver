@@ -139,13 +139,13 @@ const Analyze: React.FC = () => {
 
       // Stage 2: Filtering
       updateStage("filtering", { status: "active", progress: 0 });
-      const filtered = smoothLandmarks(
+      const { smoothed, forward } = smoothLandmarks(
         detected,
         fps,
         (progress) => updateStage("filtering", { progress }),
         { useRtsSmoother }
       );
-      setFilteredLandmarks(filtered);
+      setFilteredLandmarks(smoothed);
       updateStage("filtering", { status: "complete", progress: 1 });
 
       // Stage 3: Kinematics
