@@ -12,8 +12,72 @@ import {
   ResponsiveContainer, ReferenceLine,
 } from "recharts";
 import type { FrameLandmarks, FrameResult } from "@/lib/biomechanics/types";
-import type { MuJoCoSolveResponse, MuJoCoFrameResult } from "@/lib/biomechanics/mujocoApi";
+import type { MuJoCoSolveResponse, MuJoCoFrameResult, MuJoCoJointResult } from "@/lib/biomechanics/mujocoApi";
 import { MOCAP_TARGET_LANDMARKS, LANDMARK_NAMES } from "@/lib/biomechanics/constants";
+
+/**
+ * Map kinematics joint names (e.g. "Left Knee Extension") to MuJoCo joint
+ * keys (e.g. "knee", "l_knee", "left_knee") with fuzzy matching.
+ */
+function findIKJoint(
+  kinName: string,
+  ikJoints: Record<string, MuJoCoJointResult>,
+): MuJoCoJointResult | null {
+  // Direct match
+  if (kinName in ikJoints) return ikJoints[kinName];
+
+  const lower = kinName.toLowerCase();
+
+  // Build candidate tokens from the kinematics name
+  // e.g. "Left Knee Extension" → ["left", "knee", "extension"]
+  const tokens = lower.split(/[\s_]+/);
+
+  // Try to find the best matching IK joint key
+  const ikKeys = Object.keys(ikJoints);
+
+  // Strategy 1: exact key match after normalising
+  for (const key of ikKeys) {
+    if (key.toLowerCase() === lower) return ikJoints[key];
+  }
+
+  // Strategy 2: IK key is a substring of the kinematics name or vice-versa
+  for (const key of ikKeys) {
+    const kl = key.toLowerCase();
+    if (lower.includes(kl) || kl.includes(lower.replace(/\s+/g, "_"))) {
+      return ikJoints[key];
+    }
+  }
+
+  // Strategy 3: match on the anatomical part (knee, hip, ankle, elbow, shoulder)
+  const anatomical = tokens.find((t) =>
+    ["knee", "hip", "ankle", "elbow", "shoulder", "wrist"].includes(t),
+  );
+  const side = tokens.find((t) => ["left", "right", "l", "r"].includes(t));
+
+  if (anatomical) {
+    for (const key of ikKeys) {
+      const kl = key.toLowerCase();
+      const keyHasPart = kl.includes(anatomical);
+      if (!keyHasPart) continue;
+
+      // If we know the side, prefer matching side; otherwise take first match
+      if (side) {
+        const sideChar = side[0]; // 'l' or 'r'
+        if (kl.startsWith(sideChar) || kl.includes(side) || kl.includes(`${sideChar}_`)) {
+          return ikJoints[key];
+        }
+      } else {
+        return ikJoints[key];
+      }
+    }
+    // Fallback: match anatomical part without side constraint
+    for (const key of ikKeys) {
+      if (key.toLowerCase().includes(anatomical)) return ikJoints[key];
+    }
+  }
+
+  return null;
+}
 
 interface Props {
   filteredLandmarks: FrameLandmarks[];
@@ -59,9 +123,15 @@ const IKLandmarkComparison: React.FC<Props> = ({
       confidence: number | null;
     }[] = [];
 
-    // Match kinematic joint names to MuJoCo joint names
+    // Match kinematic joint names to MuJoCo joint names (fuzzy)
+    const matchedIkKeys = new Set<string>();
     for (const ja of kinFrame.jointAngles) {
-      const ikJoint = ikFrame.joints?.[ja.name];
+      const ikJoint = ikFrame.joints ? findIKJoint(ja.name, ikFrame.joints) : null;
+      if (ikJoint) {
+        // track which IK keys were matched
+        const key = Object.entries(ikFrame.joints ?? {}).find(([, v]) => v === ikJoint)?.[0];
+        if (key) matchedIkKeys.add(key);
+      }
       rows.push({
         joint: ja.name,
         mocapAngleDeg: ja.angleDeg,
@@ -75,9 +145,8 @@ const IKLandmarkComparison: React.FC<Props> = ({
 
     // Add IK-only joints not present in kinematics
     if (ikFrame.joints) {
-      const kinNames = new Set(kinFrame.jointAngles.map((j) => j.name));
       for (const [name, j] of Object.entries(ikFrame.joints)) {
-        if (!kinNames.has(name)) {
+        if (!matchedIkKeys.has(name)) {
           rows.push({
             joint: name,
             mocapAngleDeg: null,
@@ -134,7 +203,7 @@ const IKLandmarkComparison: React.FC<Props> = ({
     const sampleKin = results[0]?.jointAngles ?? [];
     const sharedJoints = sampleKin
       .map((j) => j.name)
-      .filter((n) => n in sampleIk);
+      .filter((n) => findIKJoint(n, sampleIk) !== null);
 
     if (sharedJoints.length === 0) return [];
 
@@ -144,11 +213,12 @@ const IKLandmarkComparison: React.FC<Props> = ({
     return results.map((r, i) => {
       const ikF = mujocoFrames[i];
       const kinJ = r.jointAngles.find((j) => j.name === jointName);
+      const ikJoint = ikF?.joints ? findIKJoint(jointName, ikF.joints) : null;
       return {
         time: r.timestamp,
         frame: i,
         mocap: kinJ?.angleDeg ?? null,
-        ik: ikF?.joints?.[jointName]?.angle_deg ?? null,
+        ik: ikJoint?.angle_deg ?? null,
       };
     }).filter((d) => d.mocap !== null || d.ik !== null);
   }, [results, mujocoFrames, hasIK]);
@@ -157,7 +227,7 @@ const IKLandmarkComparison: React.FC<Props> = ({
     if (!hasIK || results.length === 0) return "";
     const sampleIk = mujocoFrames[0]?.joints ?? {};
     const sampleKin = results[0]?.jointAngles ?? [];
-    return sampleKin.map((j) => j.name).find((n) => n in sampleIk) ?? "";
+    return sampleKin.map((j) => j.name).find((n) => findIKJoint(n, sampleIk) !== null) ?? "";
   }, [results, mujocoFrames, hasIK]);
 
   if (!hasIK && results.length === 0) return null;
