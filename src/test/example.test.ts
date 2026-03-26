@@ -10,10 +10,10 @@ function makeFrame(kneeInteriorAngleDeg: number): FrameLandmarks {
 
   worldPositions[23] = [-1, 0, 0];
   worldPositions[25] = [0, 0, 0];
-  worldPositions[27] = [Math.cos(radians), Math.sin(radians), 0];
+  worldPositions[27] = [-Math.cos(radians), Math.sin(radians), 0];
   worldPositions[24] = [-1, 0, 0];
   worldPositions[26] = [0, 0, 0];
-  worldPositions[28] = [Math.cos(radians), Math.sin(radians), 0];
+  worldPositions[28] = [-Math.cos(radians), Math.sin(radians), 0];
 
   return {
     frameIdx: 0,
