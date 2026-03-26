@@ -152,6 +152,7 @@ const Analyze: React.FC = () => {
         { useRtsSmoother }
       );
       setFilteredLandmarks(smoothed);
+      setForwardLandmarks(forward);
       updateStage("filtering", { status: "complete", progress: 1 });
 
       // Stage 3: Kinematics
