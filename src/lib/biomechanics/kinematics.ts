@@ -1,9 +1,16 @@
 import type { FrameLandmarks, FrameResult, JointAngle } from "./types";
-import { LIMB_SEGMENTS, JOINT_VELOCITY_LIMITS, MAX_COM_SPEED_MS, SYMMETRIC_LIMB_PAIRS } from "./constants";
+import {
+  COM_TRACK_SMOOTH_HALF_WIDTH,
+  JOINT_ANGLE_PRE_DERIV_HALF_WIDTH,
+  LIMB_SEGMENTS,
+  JOINT_VELOCITY_LIMITS,
+  MAX_COM_SPEED_MS,
+  SYMMETRIC_LIMB_PAIRS,
+} from "./constants";
 import { landmarksVisible, minVisibility, interpolateGatedAngles, DEFAULT_VISIBILITY_THRESHOLD } from "./visibility";
 import { type Mat3, applyHomography } from "./homography";
-import { smartDeriv } from "./derivatives";
-import { buildHipComTrack, velocityFromPositionTrack } from "./comVelocity";
+import { movingAverage1d, smartDeriv } from "./derivatives";
+import { buildHipComTrack, smoothComTrackMovingAverage, velocityFromPositionTrack } from "./comVelocity";
 
 /** Calibrate normalized image coordinates to meters using a known horizontal span (e.g. track markings). */
 export interface MetricCalibrationInput {
@@ -299,7 +306,11 @@ export function computeKinematics(
   // Convert to radians, differentiate, then store in rad/s.
   const velocitiesPerJoint: number[][] = gatedAngles.map((angleDegSeries, j) => {
     const angleRadSeries = angleDegSeries.map((a) => (a * Math.PI) / 180);
-    const rawVel = smartDeriv(angleRadSeries, dt);
+    const smoothedRad =
+      JOINT_ANGLE_PRE_DERIV_HALF_WIDTH > 0
+        ? movingAverage1d(angleRadSeries, JOINT_ANGLE_PRE_DERIV_HALF_WIDTH)
+        : angleRadSeries;
+    const rawVel = smartDeriv(smoothedRad, dt);
 
     // Clamp to physiological limits
     const limit = JOINT_VELOCITY_LIMITS[JOINT_DEFINITIONS[j].limitKey] ?? JOINT_VELOCITY_LIMITS.default;
@@ -313,7 +324,11 @@ export function computeKinematics(
   const clampedFrames: Map<number, string[]> = new Map();
   gatedAngles.forEach((angleDegSeries, j) => {
     const angleRadSeries = angleDegSeries.map((a) => (a * Math.PI) / 180);
-    const rawVel = smartDeriv(angleRadSeries, dt);
+    const smoothedRad =
+      JOINT_ANGLE_PRE_DERIV_HALF_WIDTH > 0
+        ? movingAverage1d(angleRadSeries, JOINT_ANGLE_PRE_DERIV_HALF_WIDTH)
+        : angleRadSeries;
+    const rawVel = smartDeriv(smoothedRad, dt);
     const limit = JOINT_VELOCITY_LIMITS[JOINT_DEFINITIONS[j].limitKey] ?? JOINT_VELOCITY_LIMITS.default;
     for (let i = 0; i < rawVel.length; i++) {
       if (Math.abs(rawVel[i]) > limit) {
@@ -325,6 +340,14 @@ export function computeKinematics(
       }
     }
   });
+
+  // CoM track (hip midpoint in metres); smooth before differentiating to avoid velocity noise amplification
+  const comTrack = buildHipComTrack(landmarks, toMetric, { planarZ: false });
+  const comTrackForVelocity =
+    COM_TRACK_SMOOTH_HALF_WIDTH > 0
+      ? smoothComTrackMovingAverage(comTrack, COM_TRACK_SMOOTH_HALF_WIDTH)
+      : comTrack;
+  const frameTimestamps = landmarks.map((fl) => fl.timestamp);
 
     // CoM track (hip midpoint in metres) — shared for position + timestamp-aware velocity
   const comTrack = buildHipComTrack(landmarks, toMetric, { planarZ: false });
@@ -359,7 +382,8 @@ export function computeKinematics(
     // CoM velocity via velocityFromPositionTrack (central/forward/backward diff with timestamps)
     let comVelocity: [number, number, number] = [0, 0, 0];
     if (comPositions.length >= 2) {
-      const rawComVel = velocityFromPositionTrack(comTrack, frameTimestamps, fps, i);
+      const rawComVel = velocityFromPositionTrack(comTrackForVelocity, frameTimestamps, fps, i);
+      
 
       const comSpeed = Math.sqrt(rawComVel[0] ** 2 + rawComVel[1] ** 2 + rawComVel[2] ** 2);
       if (comSpeed > MAX_COM_SPEED_MS) {
