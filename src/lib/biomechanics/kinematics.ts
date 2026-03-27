@@ -174,8 +174,11 @@ function computeStrideLengthsH(
       totalDisplacement += Math.sqrt((cx - px) ** 2 + (cy - py) ** 2);
     }
 
-    for (let f = startFrame; f <= endFrame; f++) {
-      strideLengthMap.set(f, totalDisplacement);
+    // Filter out outlier steps shorter than 1.5 m
+    if (totalDisplacement >= 1.5) {
+      for (let f = startFrame; f <= endFrame; f++) {
+        strideLengthMap.set(f, totalDisplacement);
+      }
     }
   }
 
