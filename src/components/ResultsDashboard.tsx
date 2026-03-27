@@ -213,7 +213,27 @@ const ResultsDashboard: React.FC<Props> = ({ results, anthropometry }) => {
                 <XAxis dataKey="time" tick={{ fontSize: 10, fill: "hsl(215, 15%, 55%)" }} tickFormatter={(v) => `${v.toFixed(1)}s`} />
                 <YAxis tick={{ fontSize: 10, fill: "hsl(215, 15%, 55%)" }} />
                 <Tooltip contentStyle={{ backgroundColor: "hsl(220, 18%, 10%)", border: "1px solid hsl(220, 15%, 18%)", borderRadius: 6, fontSize: 11 }} />
-                <Area type="monotone" dataKey="stride" stroke="hsl(160, 70%, 45%)" fill="hsl(160, 70%, 45%)" fillOpacity={0.15} strokeWidth={1.5} />
+                <Area
+                  type="monotone"
+                  dataKey="stride"
+                  stroke="hsl(160, 70%, 45%)"
+                  fill="hsl(160, 70%, 45%)"
+                  fillOpacity={0.15}
+                  strokeWidth={1.5}
+                  dot={(props: any) => {
+                    const { cx, cy, payload } = props;
+                    if (!payload.stepNumber) return <g key={`dot-${props.index}`} />;
+                    return (
+                      <g key={`dot-${props.index}`}>
+                        <circle cx={cx} cy={cy} r={8} fill="hsl(160, 70%, 35%)" stroke="hsl(160, 70%, 55%)" strokeWidth={1.5} />
+                        <text x={cx} y={cy + 3.5} textAnchor="middle" fill="white" fontSize={8} fontWeight="bold" fontFamily="monospace">
+                          {payload.stepNumber}
+                        </text>
+                      </g>
+                    );
+                  }}
+                  activeDot={{ r: 4 }}
+                />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
