@@ -67,10 +67,15 @@ const ResultsDashboard: React.FC<Props> = ({ results, anthropometry }) => {
     return peaks;
   }, [results]);
 
-  const strideData = useMemo(
-    () => results.map((r) => ({ time: r.timestamp, stride: Number(r.strideLength.toFixed(3)) })),
-    [results]
-  );
+  const strideData = useMemo(() => {
+    let stepNum = 0;
+    return results.map((r) => {
+      const stride = Number(r.strideLength.toFixed(3));
+      const isStep = stride > 0.01;
+      if (isStep) stepNum++;
+      return { time: r.timestamp, stride, stepNumber: isStep ? stepNum : null };
+    });
+  }, [results]);
 
   const comData = useMemo(
     () =>
