@@ -152,30 +152,32 @@ function computeStrideLengthsH(
 ): Map<number, number> {
   const strideLengthMap = new Map<number, number>();
 
-  function processStrikes(strikes: number[]) {
-    for (let s = 1; s < strikes.length; s++) {
-      const startFrame = strikes[s - 1];
-      const endFrame = strikes[s];
+  // Merge left and right heel strikes into a single chronological sequence
+  // so we measure individual step lengths (foot-to-opposite-foot)
+  const allStrikes = [
+    ...heelStrikes.left.map((f) => ({ frame: f, side: "L" as const })),
+    ...heelStrikes.right.map((f) => ({ frame: f, side: "R" as const })),
+  ].sort((a, b) => a.frame - b.frame);
 
-      let totalDisplacement = 0;
-      for (let f = startFrame + 1; f <= endFrame; f++) {
-        const prevHipX = (landmarks[f - 1].positions[23][0] + landmarks[f - 1].positions[24][0]) / 2;
-        const prevHipY = (landmarks[f - 1].positions[23][1] + landmarks[f - 1].positions[24][1]) / 2;
-        const currHipX = (landmarks[f].positions[23][0] + landmarks[f].positions[24][0]) / 2;
-        const currHipY = (landmarks[f].positions[23][1] + landmarks[f].positions[24][1]) / 2;
-        const [px, py] = toMetric(prevHipX, prevHipY);
-        const [cx, cy] = toMetric(currHipX, currHipY);
-        totalDisplacement += Math.sqrt((cx - px) ** 2 + (cy - py) ** 2);
-      }
+  for (let s = 1; s < allStrikes.length; s++) {
+    const startFrame = allStrikes[s - 1].frame;
+    const endFrame = allStrikes[s].frame;
 
-      for (let f = startFrame; f <= endFrame; f++) {
-        strideLengthMap.set(f, totalDisplacement);
-      }
+    let totalDisplacement = 0;
+    for (let f = startFrame + 1; f <= endFrame; f++) {
+      const prevHipX = (landmarks[f - 1].positions[23][0] + landmarks[f - 1].positions[24][0]) / 2;
+      const prevHipY = (landmarks[f - 1].positions[23][1] + landmarks[f - 1].positions[24][1]) / 2;
+      const currHipX = (landmarks[f].positions[23][0] + landmarks[f].positions[24][0]) / 2;
+      const currHipY = (landmarks[f].positions[23][1] + landmarks[f].positions[24][1]) / 2;
+      const [px, py] = toMetric(prevHipX, prevHipY);
+      const [cx, cy] = toMetric(currHipX, currHipY);
+      totalDisplacement += Math.sqrt((cx - px) ** 2 + (cy - py) ** 2);
+    }
+
+    for (let f = startFrame; f <= endFrame; f++) {
+      strideLengthMap.set(f, totalDisplacement);
     }
   }
-
-  processStrikes(heelStrikes.left);
-  processStrikes(heelStrikes.right);
 
   return strideLengthMap;
 }
