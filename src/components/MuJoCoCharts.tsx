@@ -376,10 +376,7 @@ const MuJoCoCharts: React.FC<Props> = ({ mujocoData, fps = 30 }) => {
                       name="two_mass_stance"
                     />
                   )}
-                </ComposedChart>                  
-                  <Line type="monotone" dataKey="left" stroke="hsl(140, 70%, 50%)" strokeWidth={2} dot={false} name="Left Total" />
-                  <Line type="monotone" dataKey="right" stroke="hsl(0, 70%, 55%)" strokeWidth={2} dot={false} name="Right Total" />
-                </AreaChart>
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           </div>
