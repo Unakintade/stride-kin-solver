@@ -15,8 +15,9 @@ import {
   ReferenceLine,
   Area,
   AreaChart,
+  ComposedChart,
 } from "recharts";
-import type { MuJoCoSolveResponse } from "@/lib/biomechanics/mujocoApi";
+import { twoMassStanceLabel, type MuJoCoSolveResponse, type TwoMassStance } from "@/lib/biomechanics/mujocoApi";
 
 interface Props {
   mujocoData: MuJoCoSolveResponse;
@@ -35,6 +36,22 @@ const CHART_COLORS = [
 ];
 
 type ChartTab = "angles" | "torques" | "grf";
+
+function stanceStep(s: TwoMassStance | undefined): number {
+  switch (s) {
+    case "l":
+      return 1;
+    case "r":
+      return 2;
+    case "double":
+      return 3;
+    default:
+      return 0;
+  }
+}
+
+const STANCE_TICKS = [0, 1, 2, 3];
+const STANCE_TICK_LABELS = ["flight", "L", "R", "2×"];
 
 const MuJoCoCharts: React.FC<Props> = ({ mujocoData, fps = 30 }) => {
   const [activeTab, setActiveTab] = useState<ChartTab>("angles");
@@ -77,18 +94,28 @@ const MuJoCoCharts: React.FC<Props> = ({ mujocoData, fps = 30 }) => {
       return row;
     }), [frames, jointNames, chartTimes]);
 
-  const grfData = useMemo(() =>
-    frames.map((f, i) => {
-      const gl = f.grf_left ?? [0, 0, 0];
-      const gr = f.grf_right ?? [0, 0, 0];
-      return {
-        time: +chartTimes[i].toFixed(4),
-        left: +Math.sqrt(gl[0] ** 2 + gl[1] ** 2 + gl[2] ** 2).toFixed(1),
-        right: +Math.sqrt(gr[0] ** 2 + gr[1] ** 2 + gr[2] ** 2).toFixed(1),
-        left_vertical: Math.abs(gl[1]),
-        right_vertical: Math.abs(gr[1]),
-      };
-    }), [frames, chartTimes]);
+  const hasTwoMassStance = useMemo(
+    () => frames.some((f) => f.two_mass_stance != null),
+    [frames],
+  );
+
+  const grfData = useMemo(
+    () =>
+      frames.map((f, i) => {
+        const gl = f.grf_left ?? [0, 0, 0];
+        const gr = f.grf_right ?? [0, 0, 0];
+        return {
+          time: +chartTimes[i].toFixed(4),
+          left: +Math.sqrt(gl[0] ** 2 + gl[1] ** 2 + gl[2] ** 2).toFixed(1),
+          right: +Math.sqrt(gr[0] ** 2 + gr[1] ** 2 + gr[2] ** 2).toFixed(1),
+          left_vertical: Math.abs(gl[1]),
+          right_vertical: Math.abs(gr[1]),
+          two_mass_stance_label: twoMassStanceLabel(f.two_mass_stance),
+          stance_step: stanceStep(f.two_mass_stance),
+        };
+      }),
+    [frames, chartTimes],
+  );
 
   if (frames.length === 0) {
     return (
@@ -246,10 +273,15 @@ const MuJoCoCharts: React.FC<Props> = ({ mujocoData, fps = 30 }) => {
           <div className="space-y-2">
             <p className="text-[10px] font-mono text-muted-foreground">
               Ground reaction force magnitudes (N) for left and right foot, with vertical component shaded.
+              {hasTwoMassStance && (
+                <span className="block mt-1 text-primary/90">
+                  two_mass_stance: stepped trace (right axis) — flight, left, right, double support.
+                </span>
+              )}
             </p>
             <div className="w-full h-72 bg-secondary/30 rounded-lg p-2">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={grfData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <ComposedChart data={grfData} margin={{ top: 5, right: hasTwoMassStance ? 36 : 10, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
                   <XAxis
                     dataKey="time"
@@ -257,9 +289,26 @@ const MuJoCoCharts: React.FC<Props> = ({ mujocoData, fps = 30 }) => {
                     label={{ value: "Time (s)", position: "insideBottom", offset: -2, style: { fontSize: 9, fontFamily: "monospace", fill: "hsl(var(--muted-foreground))" } }}
                   />
                   <YAxis
+                    yAxisId="force"
                     tick={{ fontSize: 9, fontFamily: "monospace", fill: "hsl(var(--muted-foreground))" }}
                     label={{ value: "Force (N)", angle: -90, position: "insideLeft", style: { fontSize: 9, fontFamily: "monospace", fill: "hsl(var(--muted-foreground))" } }}
                   />
+                  {hasTwoMassStance && (
+                    <YAxis
+                      yAxisId="stance"
+                      orientation="right"
+                      domain={[-0.25, 3.25]}
+                      ticks={STANCE_TICKS}
+                      tickFormatter={(v) => STANCE_TICK_LABELS[v] ?? v}
+                      tick={{ fontSize: 8, fontFamily: "monospace", fill: "hsl(var(--muted-foreground))" }}
+                      label={{
+                        value: "stance",
+                        angle: 90,
+                        position: "insideRight",
+                        style: { fontSize: 9, fontFamily: "monospace", fill: "hsl(280, 60%, 55%)" },
+                      }}
+                    />
+                  )}
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "hsl(var(--card))",
@@ -269,10 +318,19 @@ const MuJoCoCharts: React.FC<Props> = ({ mujocoData, fps = 30 }) => {
                       fontFamily: "monospace",
                     }}
                     labelStyle={{ color: "hsl(var(--foreground))" }}
+                    formatter={(value: unknown, name: string) => {
+                      if (name === "two_mass_stance" && typeof value === "number") {
+                        const idx = Math.round(value);
+                        return [STANCE_TICK_LABELS[idx] ?? String(value), "two_mass_stance"];
+                      }
+                      if (typeof value === "number") return [value.toFixed(1), name];
+                      return [String(value ?? ""), name];
+                    }}
                   />
                   <Legend wrapperStyle={{ fontSize: 10, fontFamily: "monospace" }} />
-                  <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" opacity={0.5} />
+                  <ReferenceLine yAxisId="force" y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="5 5" opacity={0.5} />
                   <Area
+                    yAxisId="force"
                     type="monotone"
                     dataKey="left_vertical"
                     stroke="none"
@@ -281,6 +339,7 @@ const MuJoCoCharts: React.FC<Props> = ({ mujocoData, fps = 30 }) => {
                     name="Left Fy"
                   />
                   <Area
+                    yAxisId="force"
                     type="monotone"
                     dataKey="right_vertical"
                     stroke="none"
@@ -288,6 +347,36 @@ const MuJoCoCharts: React.FC<Props> = ({ mujocoData, fps = 30 }) => {
                     fillOpacity={0.15}
                     name="Right Fy"
                   />
+                  <Line
+                    yAxisId="force"
+                    type="monotone"
+                    dataKey="left"
+                    stroke="hsl(140, 70%, 50%)"
+                    strokeWidth={2}
+                    dot={false}
+                    name="Left Total"
+                  />
+                  <Line
+                    yAxisId="force"
+                    type="monotone"
+                    dataKey="right"
+                    stroke="hsl(0, 70%, 55%)"
+                    strokeWidth={2}
+                    dot={false}
+                    name="Right Total"
+                  />
+                  {hasTwoMassStance && (
+                    <Line
+                      yAxisId="stance"
+                      type="stepAfter"
+                      dataKey="stance_step"
+                      stroke="hsl(280, 60%, 55%)"
+                      strokeWidth={1.5}
+                      dot={false}
+                      name="two_mass_stance"
+                    />
+                  )}
+                </ComposedChart>                  
                   <Line type="monotone" dataKey="left" stroke="hsl(140, 70%, 50%)" strokeWidth={2} dot={false} name="Left Total" />
                   <Line type="monotone" dataKey="right" stroke="hsl(0, 70%, 55%)" strokeWidth={2} dot={false} name="Right Total" />
                 </AreaChart>

@@ -11,6 +11,8 @@ export interface MuJoCoJointResult {
   torque_nm: number;
 }
 
+export type TwoMassStance = "none" | "l" | "r" | "double";
+
 export interface MuJoCoFrameResult {
   timestamp: number;
   frame_idx: number;
@@ -21,6 +23,30 @@ export interface MuJoCoFrameResult {
   grf_right: [number, number, number];
   residual_error: number;
   warnings: string[];
+  /** Two-mass vGRF stance phase from backend (MuJoCo contact + landmark accelerations) */
+  two_mass_stance?: TwoMassStance;
+  vgrf_model?: string;
+}
+
+export function parseTwoMassStance(v: unknown): TwoMassStance | undefined {
+  if (v === "none" || v === "l" || v === "r" || v === "double") return v;
+  return undefined;
+}
+
+/** Short label for charts / UI */
+export function twoMassStanceLabel(s: TwoMassStance | undefined): string {
+  switch (s) {
+    case "l":
+      return "left stance";
+    case "r":
+      return "right stance";
+    case "double":
+      return "double support";
+    case "none":
+      return "flight";
+    default:
+      return "—";
+  }
 }
 
 export interface MuJoCoSolveResponse {
