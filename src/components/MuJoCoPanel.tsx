@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import {
   solveMuJoCo,
   getMuJoCoBackendUrl,
   setMuJoCoBackendUrl,
+  twoMassStanceLabel,
   type MuJoCoSolveResponse,
 } from "@/lib/biomechanics/mujocoApi";
 
@@ -110,6 +111,16 @@ const MuJoCoPanel: React.FC<Props> = ({
   const summary = response?.summary;
   const firstFrame = frames[0];
 
+  const stanceBreakdown = useMemo(() => {
+    if (!frames.some((f) => f.two_mass_stance != null)) return null;
+    const c = { none: 0, l: 0, r: 0, double: 0 };
+    for (const f of frames) {
+      const k = f.two_mass_stance;
+      if (k === "none" || k === "l" || k === "r" || k === "double") c[k]++;
+    }
+    return { c, n: frames.length };
+  }, [frames]);
+  
   return (
     <Card className="bg-card border-border">
       <CardHeader className="pb-2">
@@ -209,6 +220,33 @@ const MuJoCoPanel: React.FC<Props> = ({
             </div>
 
             {/* Sample frame data */}
+            {(firstFrame?.two_mass_stance != null || stanceBreakdown) && (
+              <div className="space-y-2 rounded-md border border-border/60 bg-secondary/40 p-3">
+                <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+                  two_mass_stance
+                </p>
+                {firstFrame?.two_mass_stance != null && (
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
+                    <span className="text-muted-foreground">Frame 0:</span>
+                    <Badge variant="secondary" className="font-mono text-[10px]">
+                      {twoMassStanceLabel(firstFrame.two_mass_stance)}
+                    </Badge>
+                    {firstFrame.vgrf_model && (
+                      <span className="text-[10px] text-muted-foreground">({firstFrame.vgrf_model})</span>
+                    )}
+                  </div>
+                )}
+                {stanceBreakdown && (
+                  <p className="text-[10px] font-mono text-foreground leading-relaxed">
+                    Clip: flight {Math.round((100 * stanceBreakdown.c.none) / stanceBreakdown.n)}% · left{" "}
+                    {Math.round((100 * stanceBreakdown.c.l) / stanceBreakdown.n)}% · right{" "}
+                    {Math.round((100 * stanceBreakdown.c.r) / stanceBreakdown.n)}% · double{" "}
+                    {Math.round((100 * stanceBreakdown.c.double) / stanceBreakdown.n)}%
+                  </p>
+                )}
+              </div>
+            )}
+            
             {firstFrame?.joints && Object.keys(firstFrame.joints).length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-mono text-muted-foreground">
