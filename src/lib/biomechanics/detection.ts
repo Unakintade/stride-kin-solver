@@ -147,12 +147,13 @@ export async function detectPoseInVideo(
   const duration = videoElement.duration;
   const totalFrames = maxFrames ?? Math.floor(duration * fps);
   const frameInterval = 1 / fps;
+  const numPasses = fps <= LOW_FPS_THRESHOLD ? NUM_PASSES_LOW_FPS : NUM_PASSES_DEFAULT;
 
   // Collect results from all passes
   const allPasses: (FrameLandmarks | null)[][] = [];
 
-  for (let pass = 0; pass < NUM_PASSES; pass++) {
-    console.log(`[Detection] Pass ${pass + 1}/${NUM_PASSES}`);
+  for (let pass = 0; pass < numPasses; pass++) {
+    console.log(`[Detection] Pass ${pass + 1}/${numPasses}`);
     // Create a fresh detector each pass so timestamps can restart from 0
     const detector = await createDetector();
     const passResults = await singlePass(
@@ -169,8 +170,8 @@ export async function detectPoseInVideo(
     detector.close();
 
     // Report progress: each pass is a fraction of the total
-    const overallProgress = (pass + 1) / NUM_PASSES;
-    onProgress(overallProgress, pass + 1, NUM_PASSES);
+    const overallProgress = (pass + 1) / numPasses;
+    onProgress(overallProgress, pass + 1, numPasses);
   }
 
   // Merge passes per frame using median fusion
@@ -179,7 +180,7 @@ export async function detectPoseInVideo(
 
   for (let i = 0; i < totalFrames; i++) {
     const candidates: FrameLandmarks[] = [];
-    for (let pass = 0; pass < NUM_PASSES; pass++) {
+    for (let pass = 0; pass < numPasses; pass++) {
       const result = allPasses[pass][i];
       if (result) candidates.push(result);
     }
@@ -190,7 +191,7 @@ export async function detectPoseInVideo(
   }
 
   console.log(
-    `[Detection] ${NUM_PASSES}-pass median fusion complete: ${landmarks.length} frames`
+    `[Detection] ${numPasses}-pass median fusion complete: ${landmarks.length} frames`
   );
 
   return landmarks;
