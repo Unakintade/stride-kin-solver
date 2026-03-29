@@ -3,7 +3,7 @@ import { Crosshair, X, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { PixelPoint } from "@/lib/biomechanics/cameraStabilization";
 
-interface Props {
+interface UseReferencePointSelectorProps {
   videoRef: React.RefObject<HTMLVideoElement>;
   videoWidth: number;
   videoHeight: number;
@@ -12,14 +12,14 @@ interface Props {
   selectedPoint: PixelPoint | null;
 }
 
-const ReferencePointSelector: React.FC<Props> = ({
+export default function useReferencePointSelector({
   videoRef,
   videoWidth,
   videoHeight,
   disabled,
   onPointSelected,
   selectedPoint,
-}) => {
+}: UseReferencePointSelectorProps) {
   const [isSelecting, setIsSelecting] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -50,7 +50,6 @@ const ReferencePointSelector: React.FC<Props> = ({
         if (selectedPoint) {
           onPointSelected(null);
         } else {
-          // Seek video to frame 0 so user picks from the first frame
           if (videoRef.current) videoRef.current.currentTime = 0;
           setIsSelecting(true);
         }
@@ -96,11 +95,4 @@ const ReferencePointSelector: React.FC<Props> = ({
   ) : null;
 
   return { triggerButton, overlay, badge };
-};
-
-/**
- * Hook wrapper for cleaner integration (same pattern as VideoCalibration).
- */
-export default function useReferencePointSelector(props: Props) {
-  return ReferencePointSelector(props);
 }
