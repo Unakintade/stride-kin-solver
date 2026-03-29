@@ -394,7 +394,10 @@ export function computeKinematics(
   // ── Second pass: assemble results ──
   for (let i = 0; i < landmarks.length; i++) {
     const fl = landmarks[i];
-    const warnings: string[] = [...(clampedFrames.get(i) ?? [])];
+    const warnings: string[] = [
+      ...(clampedFrames.get(i) ?? []),
+      ...(limbLengthWarnings.get(i) ?? []),
+    ];
 
     const jointAngles: JointAngle[] = JOINT_DEFINITIONS.map((jd, j) => {
       const angle = gatedAngles[j][i];
