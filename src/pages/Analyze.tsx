@@ -84,6 +84,7 @@ const Analyze: React.FC = () => {
   const [currentFrame, setCurrentFrame] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [homographyMatrix, setHomographyMatrix] = useState<Mat3 | null>(null);
+  const [panRefPoint, setPanRefPoint] = useState<PixelPoint | null>(null);
   const animRef = useRef<number>(0);
 
   const calibration = useVideoCalibration({
