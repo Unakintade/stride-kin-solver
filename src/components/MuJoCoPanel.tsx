@@ -221,20 +221,42 @@ const MuJoCoPanel: React.FC<Props> = ({
               ))}
             </div>
 
-            {/* Sample frame data */}
-            {(firstFrame?.two_mass_stance != null || stanceBreakdown) && (
+            {/* Frame scrubber */}
+            {frames.length > 1 && (
+              <div className="space-y-2 rounded-md border border-border/60 bg-secondary/40 p-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
+                    Frame Inspector
+                  </p>
+                  <span className="text-xs font-mono text-foreground">
+                    {selectedFrameIdx} / {frames.length - 1}
+                  </span>
+                </div>
+                <Slider
+                  min={0}
+                  max={frames.length - 1}
+                  step={1}
+                  value={[selectedFrameIdx]}
+                  onValueChange={([v]) => setSelectedFrameIdx(v)}
+                  className="my-1"
+                />
+              </div>
+            )}
+
+            {/* Stance data */}
+            {(currentFrame?.two_mass_stance != null || stanceBreakdown) && (
               <div className="space-y-2 rounded-md border border-border/60 bg-secondary/40 p-3">
                 <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
                   two_mass_stance
                 </p>
-                {firstFrame?.two_mass_stance != null && (
+                {currentFrame?.two_mass_stance != null && (
                   <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
-                    <span className="text-muted-foreground">Frame 0:</span>
+                    <span className="text-muted-foreground">Frame {selectedFrameIdx}:</span>
                     <Badge variant="secondary" className="font-mono text-[10px]">
-                      {twoMassStanceLabel(firstFrame.two_mass_stance)}
+                      {twoMassStanceLabel(currentFrame.two_mass_stance)}
                     </Badge>
-                    {firstFrame.vgrf_model && (
-                      <span className="text-[10px] text-muted-foreground">({firstFrame.vgrf_model})</span>
+                    {currentFrame.vgrf_model && (
+                      <span className="text-[10px] text-muted-foreground">({currentFrame.vgrf_model})</span>
                     )}
                   </div>
                 )}
@@ -249,13 +271,13 @@ const MuJoCoPanel: React.FC<Props> = ({
               </div>
             )}
             
-            {firstFrame?.joints && Object.keys(firstFrame.joints).length > 0 && (
+            {currentFrame?.joints && Object.keys(currentFrame.joints).length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs font-mono text-muted-foreground">
-                  Joint data (frame 0):
+                  Joint data (frame {selectedFrameIdx}):
                 </p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {Object.entries(firstFrame.joints).slice(0, 8).map(([name, j]) => (
+                  {Object.entries(currentFrame.joints).slice(0, 8).map(([name, j]: [string, any]) => (
                     <div key={name} className="bg-secondary rounded p-2">
                       <p className="text-[9px] font-mono text-muted-foreground truncate">{name}</p>
                       <p className="text-sm font-semibold text-foreground">{(j?.angle_deg ?? 0).toFixed(1)}°</p>
