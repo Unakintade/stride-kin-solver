@@ -17,6 +17,9 @@ import Skeleton3DViewer from "@/components/Skeleton3DViewer";
 import MuJoCoCharts from "@/components/MuJoCoCharts";
 import SprintAISummary from "@/components/SprintAISummary";
 import IKLandmarkComparison from "@/components/IKLandmarkComparison";
+import useReferencePointSelector from "@/components/ReferencePointSelector";
+import type { PixelPoint } from "@/lib/biomechanics/cameraStabilization";
+import { trackReferencePoint, applyStabilization } from "@/lib/biomechanics/cameraStabilization";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { FrameLandmarks, FrameResult, PipelineStage } from "@/lib/biomechanics/types";
@@ -36,8 +39,11 @@ import { validateFps } from "@/lib/biomechanics/fpsValidation";
 import { dumpVisibilityReport, visibilityReportCSV } from "@/lib/biomechanics/debugVisibility";
 import type { GatingMode } from "@/lib/biomechanics/kinematics";
 
-const INITIAL_STAGES: PipelineStage[] = [
-  { id: "detection", name: "Vision", description: "BlazePose ×5 median", status: "pending", progress: 0 },
+const makeInitialStages = (hasStabilization: boolean): PipelineStage[] => [
+  { id: "detection", name: "Vision", description: "BlazePose ×3/5 median", status: "pending", progress: 0 },
+  ...(hasStabilization
+    ? [{ id: "stabilization", name: "Stabilize", description: "Camera pan compensation", status: "pending" as const, progress: 0 }]
+    : []),
   { id: "filtering", name: "Filtering", description: "CA-KF + RTS", status: "pending", progress: 0 },
   {
     id: "kinematics",
@@ -48,6 +54,8 @@ const INITIAL_STAGES: PipelineStage[] = [
   },
   { id: "results", name: "Results", description: "Export", status: "pending", progress: 0 },
 ];
+
+const INITIAL_STAGES = makeInitialStages(false);
 
 const Analyze: React.FC = () => {
   const navigate = useNavigate();
@@ -76,6 +84,7 @@ const Analyze: React.FC = () => {
   const [currentFrame, setCurrentFrame] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [homographyMatrix, setHomographyMatrix] = useState<Mat3 | null>(null);
+  const [panRefPoint, setPanRefPoint] = useState<PixelPoint | null>(null);
   const animRef = useRef<number>(0);
 
   const calibration = useVideoCalibration({
@@ -86,6 +95,15 @@ const Analyze: React.FC = () => {
 
   const homographyCal = useHomographyCalibration({
     onCalibrated: (H) => setHomographyMatrix(H),
+  });
+
+  const panRef = useReferencePointSelector({
+    videoRef: videoRef as React.RefObject<HTMLVideoElement>,
+    videoWidth: videoDimensions.width,
+    videoHeight: videoDimensions.height,
+    disabled: isProcessing,
+    onPointSelected: setPanRefPoint,
+    selectedPoint: panRefPoint,
   });
 
   const updateStage = useCallback((id: string, updates: Partial<PipelineStage>) => {
@@ -126,11 +144,12 @@ const Analyze: React.FC = () => {
 
     setIsProcessing(true);
     setCurrentFrame(0);
+    setStages(makeInitialStages(!!panRefPoint));
 
     try {
       // Stage 1: Detection
       updateStage("detection", { status: "active", progress: 0 });
-      const detected = await detectPoseInVideo(
+      let detected = await detectPoseInVideo(
         video,
         fps,
         (progress) => updateStage("detection", { progress }),
@@ -142,6 +161,21 @@ const Analyze: React.FC = () => {
       if (detected.length === 0) {
         updateStage("filtering", { status: "error" });
         throw new Error("No poses detected in video");
+      }
+
+      // Stage 1.5: Camera stabilization (if reference point set)
+      if (panRefPoint) {
+        updateStage("stabilization", { status: "active", progress: 0 });
+        const totalFrames = maxFrames > 0 ? maxFrames : Math.floor(video.duration * fps);
+        const offsets = await trackReferencePoint(
+          video,
+          panRefPoint,
+          fps,
+          totalFrames,
+          (p) => updateStage("stabilization", { progress: p }),
+        );
+        detected = applyStabilization(detected, offsets);
+        updateStage("stabilization", { status: "complete", progress: 1 });
       }
 
       // Stage 2: Filtering
@@ -202,7 +236,7 @@ const Analyze: React.FC = () => {
     } finally {
       setIsProcessing(false);
     }
-  }, [videoUrl, fps, maxFrames, updateStage, useRtsSmoother, fieldWidthMeters, homographyMatrix]);
+  }, [videoUrl, fps, maxFrames, updateStage, useRtsSmoother, fieldWidthMeters, homographyMatrix, panRefPoint]);
 
   // Playback animation
   useEffect(() => {
@@ -323,6 +357,7 @@ const Analyze: React.FC = () => {
                     />
                     {!calibration.isCalibrating && !homographyCal.isCalibrating && calibration.triggerButton}
                     {!calibration.isCalibrating && !homographyCal.isCalibrating && homographyCal.triggerButton}
+                    {!calibration.isCalibrating && !homographyCal.isCalibrating && panRef.triggerButton}
                   </div>
                   {calibration.controls}
                   {homographyCal.controls}
@@ -331,8 +366,9 @@ const Analyze: React.FC = () => {
                       ✓ Homography active — perspective correction applied
                     </p>
                   )}
+                  {panRef.badge}
                   <p className="text-[10px] font-mono text-muted-foreground">
-                    Enter manually, or click "Calibrate" for 2-point scale / "Homography" for 4-point perspective correction.
+                    Enter manually, or click "Calibrate" for 2-point scale / "Homography" for 4-point perspective correction / "Pan Ref" for panning videos.
                     Leave empty for automatic scale from limb ratios.
                   </p>
                 </div>
@@ -454,6 +490,7 @@ const Analyze: React.FC = () => {
                     setMujocoData(null);
                     setHomographyMatrix(null);
                     setFieldWidthMeters("");
+                    setPanRefPoint(null);
                   }}
                   className="font-mono text-xs"
                   disabled={isProcessing}
@@ -485,6 +522,7 @@ const Analyze: React.FC = () => {
                   />
                   {calibration.overlay}
                   {homographyCal.overlay}
+                  {panRef.overlay}
                 </div>
 
                 {/* Playback controls */}
