@@ -144,11 +144,12 @@ const Analyze: React.FC = () => {
 
     setIsProcessing(true);
     setCurrentFrame(0);
+    setStages(makeInitialStages(!!panRefPoint));
 
     try {
       // Stage 1: Detection
       updateStage("detection", { status: "active", progress: 0 });
-      const detected = await detectPoseInVideo(
+      let detected = await detectPoseInVideo(
         video,
         fps,
         (progress) => updateStage("detection", { progress }),
@@ -160,6 +161,21 @@ const Analyze: React.FC = () => {
       if (detected.length === 0) {
         updateStage("filtering", { status: "error" });
         throw new Error("No poses detected in video");
+      }
+
+      // Stage 1.5: Camera stabilization (if reference point set)
+      if (panRefPoint) {
+        updateStage("stabilization", { status: "active", progress: 0 });
+        const totalFrames = maxFrames > 0 ? maxFrames : Math.floor(video.duration * fps);
+        const offsets = await trackReferencePoint(
+          video,
+          panRefPoint,
+          fps,
+          totalFrames,
+          (p) => updateStage("stabilization", { progress: p }),
+        );
+        detected = applyStabilization(detected, offsets);
+        updateStage("stabilization", { status: "complete", progress: 1 });
       }
 
       // Stage 2: Filtering
