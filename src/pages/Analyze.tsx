@@ -520,6 +520,7 @@ const Analyze: React.FC = () => {
                   />
                   {calibration.overlay}
                   {homographyCal.overlay}
+                  {panRef.overlay}
                 </div>
 
                 {/* Playback controls */}
