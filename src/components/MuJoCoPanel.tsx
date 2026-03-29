@@ -109,7 +109,8 @@ const MuJoCoPanel: React.FC<Props> = ({
 
   const frames = response?.frames ?? [];
   const summary = response?.summary;
-  const firstFrame = frames[0];
+  const [selectedFrameIdx, setSelectedFrameIdx] = useState(0);
+  const currentFrame = frames[selectedFrameIdx] ?? frames[0];
 
   const stanceBreakdown = useMemo(() => {
     if (!frames.some((f) => f.two_mass_stance != null)) return null;
