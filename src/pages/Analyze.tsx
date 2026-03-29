@@ -366,8 +366,9 @@ const Analyze: React.FC = () => {
                       ✓ Homography active — perspective correction applied
                     </p>
                   )}
+                  {panRef.badge}
                   <p className="text-[10px] font-mono text-muted-foreground">
-                    Enter manually, or click "Calibrate" for 2-point scale / "Homography" for 4-point perspective correction.
+                    Enter manually, or click "Calibrate" for 2-point scale / "Homography" for 4-point perspective correction / "Pan Ref" for panning videos.
                     Leave empty for automatic scale from limb ratios.
                   </p>
                 </div>
