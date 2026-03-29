@@ -2,14 +2,10 @@
 import { PoseLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import type { FrameLandmarks } from "./types";
 
-let poseLandmarker: any = null;
-
 const VISION_WASM_VERSION = "0.10.34";
 const NUM_PASSES = 5;
 
-export async function initPoseDetector(): Promise<any> {
-  if (poseLandmarker) return poseLandmarker;
-
+async function createDetector(): Promise<any> {
   const vision = await FilesetResolver.forVisionTasks(
     `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VISION_WASM_VERSION}/wasm`
   );
@@ -27,14 +23,12 @@ export async function initPoseDetector(): Promise<any> {
   };
 
   try {
-    poseLandmarker = await PoseLandmarker.createFromOptions(vision, options);
+    return await PoseLandmarker.createFromOptions(vision, options);
   } catch (gpuError) {
     console.warn("GPU delegate failed, falling back to CPU:", gpuError);
     options.baseOptions.delegate = "CPU" as any;
-    poseLandmarker = await PoseLandmarker.createFromOptions(vision, options);
+    return await PoseLandmarker.createFromOptions(vision, options);
   }
-
-  return poseLandmarker;
 }
 
 /**
@@ -148,8 +142,6 @@ export async function detectPoseInVideo(
   onProgress: (progress: number, frame: number, total: number) => void,
   maxFrames?: number
 ): Promise<FrameLandmarks[]> {
-  const detector = await initPoseDetector();
-
   const duration = videoElement.duration;
   const totalFrames = maxFrames ?? Math.floor(duration * fps);
   const frameInterval = 1 / fps;
@@ -159,6 +151,8 @@ export async function detectPoseInVideo(
 
   for (let pass = 0; pass < NUM_PASSES; pass++) {
     console.log(`[Detection] Pass ${pass + 1}/${NUM_PASSES}`);
+    // Create a fresh detector each pass so timestamps can restart from 0
+    const detector = await createDetector();
     const passResults = await singlePass(
       detector,
       videoElement,
@@ -169,6 +163,8 @@ export async function detectPoseInVideo(
       pass,
     );
     allPasses.push(passResults);
+    // Close the detector to free resources before next pass
+    detector.close();
 
     // Report progress: each pass is a fraction of the total
     const overallProgress = (pass + 1) / NUM_PASSES;
