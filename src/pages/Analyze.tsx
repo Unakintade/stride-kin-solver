@@ -39,8 +39,11 @@ import { validateFps } from "@/lib/biomechanics/fpsValidation";
 import { dumpVisibilityReport, visibilityReportCSV } from "@/lib/biomechanics/debugVisibility";
 import type { GatingMode } from "@/lib/biomechanics/kinematics";
 
-const INITIAL_STAGES: PipelineStage[] = [
-  { id: "detection", name: "Vision", description: "BlazePose ×5 median", status: "pending", progress: 0 },
+const makeInitialStages = (hasStabilization: boolean): PipelineStage[] => [
+  { id: "detection", name: "Vision", description: "BlazePose ×3/5 median", status: "pending", progress: 0 },
+  ...(hasStabilization
+    ? [{ id: "stabilization", name: "Stabilize", description: "Camera pan compensation", status: "pending" as const, progress: 0 }]
+    : []),
   { id: "filtering", name: "Filtering", description: "CA-KF + RTS", status: "pending", progress: 0 },
   {
     id: "kinematics",
@@ -51,6 +54,8 @@ const INITIAL_STAGES: PipelineStage[] = [
   },
   { id: "results", name: "Results", description: "Export", status: "pending", progress: 0 },
 ];
+
+const INITIAL_STAGES = makeInitialStages(false);
 
 const Analyze: React.FC = () => {
   const navigate = useNavigate();
