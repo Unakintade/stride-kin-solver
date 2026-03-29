@@ -489,6 +489,7 @@ const Analyze: React.FC = () => {
                     setMujocoData(null);
                     setHomographyMatrix(null);
                     setFieldWidthMeters("");
+                    setPanRefPoint(null);
                   }}
                   className="font-mono text-xs"
                   disabled={isProcessing}
