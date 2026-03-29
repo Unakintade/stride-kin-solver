@@ -236,7 +236,7 @@ const Analyze: React.FC = () => {
     } finally {
       setIsProcessing(false);
     }
-  }, [videoUrl, fps, maxFrames, updateStage, useRtsSmoother, fieldWidthMeters, homographyMatrix]);
+  }, [videoUrl, fps, maxFrames, updateStage, useRtsSmoother, fieldWidthMeters, homographyMatrix, panRefPoint]);
 
   // Playback animation
   useEffect(() => {
