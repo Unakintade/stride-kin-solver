@@ -3,7 +3,9 @@ import { PoseLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import type { FrameLandmarks } from "./types";
 
 const VISION_WASM_VERSION = "0.10.34";
-const NUM_PASSES = 5;
+const NUM_PASSES_DEFAULT = 3;
+const NUM_PASSES_LOW_FPS = 5;
+const LOW_FPS_THRESHOLD = 60;
 
 async function createDetector(): Promise<any> {
   const vision = await FilesetResolver.forVisionTasks(
