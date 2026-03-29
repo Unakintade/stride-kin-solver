@@ -71,7 +71,7 @@ export const MAX_COM_SPEED_MS = 15.0;
  * Moving-average half-width (frames) on hip-mid CoM position before differentiating for velocity.
  * Reduces differentiation noise; full window = 2 * half + 1 (default 5 frames ≈ 170 ms @ 30 Hz).
  */
-export const COM_TRACK_SMOOTH_HALF_WIDTH = 7;
+export const COM_TRACK_SMOOTH_HALF_WIDTH = 10;
 
 /**
  * Moving-average half-width on joint angles (radians) before angular velocity (default 3 frames).
