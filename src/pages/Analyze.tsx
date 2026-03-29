@@ -37,7 +37,7 @@ import { dumpVisibilityReport, visibilityReportCSV } from "@/lib/biomechanics/de
 import type { GatingMode } from "@/lib/biomechanics/kinematics";
 
 const INITIAL_STAGES: PipelineStage[] = [
-  { id: "detection", name: "Vision", description: "BlazePose", status: "pending", progress: 0 },
+  { id: "detection", name: "Vision", description: "BlazePose ×5 median", status: "pending", progress: 0 },
   { id: "filtering", name: "Filtering", description: "CA-KF + RTS", status: "pending", progress: 0 },
   {
     id: "kinematics",
