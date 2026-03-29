@@ -97,6 +97,15 @@ const Analyze: React.FC = () => {
     onCalibrated: (H) => setHomographyMatrix(H),
   });
 
+  const panRef = useReferencePointSelector({
+    videoRef: videoRef as React.RefObject<HTMLVideoElement>,
+    videoWidth: videoDimensions.width,
+    videoHeight: videoDimensions.height,
+    disabled: isProcessing,
+    onPointSelected: setPanRefPoint,
+    selectedPoint: panRefPoint,
+  });
+
   const updateStage = useCallback((id: string, updates: Partial<PipelineStage>) => {
     setStages((prev) => prev.map((s) => (s.id === id ? { ...s, ...updates } : s)));
   }, []);
