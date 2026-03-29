@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 import { Download, Server, Loader2, AlertTriangle, Zap, ChevronDown, ChevronUp, Bug } from "lucide-react";
 import type { FrameLandmarks } from "@/lib/biomechanics/types";
 import {
