@@ -275,7 +275,7 @@ const MuJoCoCharts: React.FC<Props> = ({ mujocoData, fps = 30 }) => {
               Ground reaction force magnitudes (N) for left and right foot, with vertical component shaded.
               {hasTwoMassStance && (
                 <span className="block mt-1 text-primary/90">
-                  two_mass_stance: stepped trace (right axis) — flight, left, right, double support.
+                  two_mass_stance: stepped trace (right axis) — flight, left/right stance (sprint: landmark feet vs local floor, no double support).
                 </span>
               )}
             </p>
