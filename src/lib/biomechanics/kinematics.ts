@@ -263,6 +263,43 @@ export function computeKinematics(
   const heelStrikes = detectHeelStrikes(landmarks, fps);
   const strideLengthMap = computeStrideLengthsH(landmarks, heelStrikes, toMetric);
 
+  // ── Limb length tracking per frame ──
+  const LIMB_FLUCTUATION_THRESHOLD = 0.30; // 30% deviation from running median
+  const limbLengthHistory: Record<string, number[]> = {};
+  const limbLengthWarnings: Map<number, string[]> = new Map();
+
+  for (const segName of Object.keys(LIMB_SEGMENTS)) {
+    limbLengthHistory[segName] = [];
+  }
+
+  for (let i = 0; i < landmarks.length; i++) {
+    const wp = landmarks[i].worldPositions;
+    const frameWarnings: string[] = [];
+
+    for (const [segName, [idxA, idxB]] of Object.entries(LIMB_SEGMENTS)) {
+      const len = dist3(wp[idxA], wp[idxB]);
+      limbLengthHistory[segName].push(len);
+
+      // Check against running median of all previous frames
+      if (limbLengthHistory[segName].length >= 5) {
+        const sorted = [...limbLengthHistory[segName]].sort((a, b) => a - b);
+        const median = sorted[Math.floor(sorted.length / 2)];
+        if (median > 0.01) {
+          const deviation = Math.abs(len - median) / median;
+          if (deviation > LIMB_FLUCTUATION_THRESHOLD) {
+            frameWarnings.push(
+              `${segName.replace(/_/g, " ")}: length ${(len * 100).toFixed(1)}cm deviated ${(deviation * 100).toFixed(0)}% from median ${(median * 100).toFixed(1)}cm`
+            );
+          }
+        }
+      }
+    }
+
+    if (frameWarnings.length > 0) {
+      limbLengthWarnings.set(i, frameWarnings);
+    }
+  }
+
   // ── First pass: compute raw angles (or null if gated) ──
   const rawAnglesPerJoint: (number | null)[][] = JOINT_DEFINITIONS.map(() => []);
 
