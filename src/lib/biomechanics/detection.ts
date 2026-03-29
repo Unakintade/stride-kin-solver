@@ -2,14 +2,10 @@
 import { PoseLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import type { FrameLandmarks } from "./types";
 
-let poseLandmarker: any = null;
-
 const VISION_WASM_VERSION = "0.10.34";
 const NUM_PASSES = 5;
 
-export async function initPoseDetector(): Promise<any> {
-  if (poseLandmarker) return poseLandmarker;
-
+async function createDetector(): Promise<any> {
   const vision = await FilesetResolver.forVisionTasks(
     `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${VISION_WASM_VERSION}/wasm`
   );
@@ -27,14 +23,12 @@ export async function initPoseDetector(): Promise<any> {
   };
 
   try {
-    poseLandmarker = await PoseLandmarker.createFromOptions(vision, options);
+    return await PoseLandmarker.createFromOptions(vision, options);
   } catch (gpuError) {
     console.warn("GPU delegate failed, falling back to CPU:", gpuError);
     options.baseOptions.delegate = "CPU" as any;
-    poseLandmarker = await PoseLandmarker.createFromOptions(vision, options);
+    return await PoseLandmarker.createFromOptions(vision, options);
   }
-
-  return poseLandmarker;
 }
 
 /**
