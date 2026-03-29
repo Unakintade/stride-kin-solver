@@ -23,8 +23,10 @@ export interface MuJoCoFrameResult {
   grf_right: [number, number, number];
   residual_error: number;
   warnings: string[];
-  /** Two-mass vGRF stance phase from backend (MuJoCo contact + landmark accelerations) */
+  /** Two-mass vGRF stance: flight / left / right (sprint pipeline omits double support) */
   two_mass_stance?: TwoMassStance;
+  /** e.g. landmark_sprint — how stance was inferred */
+  two_mass_stance_source?: string;  
   vgrf_model?: string;
 }
 
