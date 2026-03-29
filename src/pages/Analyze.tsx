@@ -357,6 +357,7 @@ const Analyze: React.FC = () => {
                     />
                     {!calibration.isCalibrating && !homographyCal.isCalibrating && calibration.triggerButton}
                     {!calibration.isCalibrating && !homographyCal.isCalibrating && homographyCal.triggerButton}
+                    {!calibration.isCalibrating && !homographyCal.isCalibrating && panRef.triggerButton}
                   </div>
                   {calibration.controls}
                   {homographyCal.controls}
