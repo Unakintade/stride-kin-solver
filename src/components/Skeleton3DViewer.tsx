@@ -12,6 +12,7 @@ import {
 import type { MuJoCoSolveResponse, MuJoCoFrameResult } from "@/lib/biomechanics/mujocoApi";
 import type { FrameLandmarks } from "@/lib/biomechanics/types";
 import { SKELETON_CONNECTIONS, LANDMARK_NAMES } from "@/lib/biomechanics/constants";
+import SmplSkeletonMesh from "@/components/SmplSkeleton";
 
 /* ─── Types ───────────────────────────────────────── */
 interface Props {
@@ -233,6 +234,10 @@ function SkeletonScene({ landmarks, mujocoFrame, showIMU }: {
   mujocoFrame: MuJoCoFrameResult | null;
   showIMU: boolean;
 }) {
+  // Prefer SMPL-24 keypoints from the backend (mmpose / mmhuman3d) when available.
+  const smplKeypoints = mujocoFrame?.keypoints3d;
+  const hasSmpl = Array.isArray(smplKeypoints) && smplKeypoints.length >= 16;
+
   const wp = landmarks?.worldPositions;
   const hasData = !!wp && wp.length >= 33;
 
@@ -285,6 +290,26 @@ function SkeletonScene({ landmarks, mujocoFrame, showIMU }: {
       (ls[2] + rs[2]) / 2,
     ];
   }, [shiftedPositions]);
+
+  // SMPL-24 path: render mmpose/mmhuman3d keypoints with grounded skeleton.
+  if (hasSmpl && smplKeypoints) {
+    return (
+      <group>
+        <SmplSkeletonMesh keypoints={smplKeypoints} frame={mujocoFrame} groundY={GROUND_PLANE_Y} />
+        <Grid
+          args={[2, 2]}
+          cellSize={0.1}
+          cellThickness={0.5}
+          cellColor="hsl(200, 20%, 30%)"
+          sectionSize={0.5}
+          sectionThickness={1}
+          sectionColor="hsl(200, 30%, 40%)"
+          fadeDistance={3}
+          position={[0, GROUND_PLANE_Y, 0]}
+        />
+      </group>
+    );
+  }
 
   if (!hasData) return null;
 
