@@ -18,6 +18,7 @@ import {
   ComposedChart,
 } from "recharts";
 import { twoMassStanceLabel, type MuJoCoSolveResponse, type TwoMassStance } from "@/lib/biomechanics/mujocoApi";
+import MmposeGaitChart from "@/components/MmposeGaitChart";
 
 interface Props {
   mujocoData: MuJoCoSolveResponse;
@@ -99,6 +100,15 @@ const MuJoCoCharts: React.FC<Props> = ({ mujocoData, fps = 30 }) => {
     [frames],
   );
 
+  const showMmposeGait = useMemo(() => {
+    const md = mujocoData.backendMetadata;
+    return (
+      mujocoData.mmposeGait2d != null ||
+      typeof md?.mmpose_gait_2d_skipped === "string" ||
+      typeof md?.mmpose_gait_2d_error === "string"
+    );
+  }, [mujocoData]);
+
   const grfData = useMemo(
     () =>
       frames.map((f, i) => {
@@ -145,7 +155,8 @@ const MuJoCoCharts: React.FC<Props> = ({ mujocoData, fps = 30 }) => {
   ];
 
   return (
-    <Card className="bg-card border-border">
+    <>
+      <Card className="bg-card border-border">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-mono text-foreground flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-primary" />
@@ -383,6 +394,8 @@ const MuJoCoCharts: React.FC<Props> = ({ mujocoData, fps = 30 }) => {
         )}
       </CardContent>
     </Card>
+    {showMmposeGait && <MmposeGaitChart mujocoData={mujocoData} fps={fps} />}
+    </>
   );
 };
 
