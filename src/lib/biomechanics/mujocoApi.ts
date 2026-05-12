@@ -217,6 +217,13 @@ function mapLandmarkKineticsFrame(raw: Record<string, unknown>, i: number): MuJo
   const com = (raw.com_position as number[] | undefined) ?? [0, 0, 0];
   const cv = (raw.com_velocity as number[] | undefined) ?? [0, 0, 0];
 
+  const kp = raw.keypoints3d as unknown;
+  const keypoints3d = Array.isArray(kp)
+    ? (kp as unknown[])
+        .map((row) => (Array.isArray(row) ? (row as unknown[]).map((v) => Number(v)) : null))
+        .filter((r): r is number[] => Array.isArray(r) && r.length >= 3)
+    : undefined;
+
   return {
     timestamp: Number(raw.timestamp ?? 0),
     frame_idx: Number(raw.frame_idx ?? i),
@@ -227,6 +234,9 @@ function mapLandmarkKineticsFrame(raw: Record<string, unknown>, i: number): MuJo
     grf_right,
     residual_error: Number(raw.residual_error ?? 0),
     warnings: Array.isArray(raw.warnings) ? (raw.warnings as string[]) : [],
+    two_mass_stance: parseTwoMassStance(raw.two_mass_stance),
+    vertical_force: Number.isFinite(vf) ? vf : undefined,
+    ...(keypoints3d && keypoints3d.length > 0 ? { keypoints3d } : {}),
   };
 }
 
