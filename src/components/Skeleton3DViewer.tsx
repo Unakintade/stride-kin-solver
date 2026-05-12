@@ -12,6 +12,7 @@ import {
 import type { MuJoCoSolveResponse, MuJoCoFrameResult } from "@/lib/biomechanics/mujocoApi";
 import type { FrameLandmarks } from "@/lib/biomechanics/types";
 import { SKELETON_CONNECTIONS, LANDMARK_NAMES } from "@/lib/biomechanics/constants";
+import SmplSkeletonMesh from "@/components/SmplSkeleton";
 
 /* ─── Types ───────────────────────────────────────── */
 interface Props {
