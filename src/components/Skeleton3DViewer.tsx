@@ -234,6 +234,10 @@ function SkeletonScene({ landmarks, mujocoFrame, showIMU }: {
   mujocoFrame: MuJoCoFrameResult | null;
   showIMU: boolean;
 }) {
+  // Prefer SMPL-24 keypoints from the backend (mmpose / mmhuman3d) when available.
+  const smplKeypoints = mujocoFrame?.keypoints3d;
+  const hasSmpl = Array.isArray(smplKeypoints) && smplKeypoints.length >= 16;
+
   const wp = landmarks?.worldPositions;
   const hasData = !!wp && wp.length >= 33;
 
