@@ -61,6 +61,7 @@ const Analyze: React.FC = () => {
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [sourceVideoFile, setSourceVideoFile] = useState<File | null>(null);
   const [videoDimensions, setVideoDimensions] = useState({ width: 640, height: 480 });
   const [fps, setFps] = useState(30);
   const [inferredFps, setInferredFps] = useState<number | null>(null);
@@ -113,6 +114,7 @@ const Analyze: React.FC = () => {
   const handleVideoSelected = useCallback((file: File) => {
     const url = URL.createObjectURL(file);
     setVideoUrl(url);
+    setSourceVideoFile(file);
     setStages(INITIAL_STAGES);
     setRawLandmarks([]);
     setFilteredLandmarks([]);
@@ -655,6 +657,7 @@ const Analyze: React.FC = () => {
                   anthropometry={anthropometry}
                   weightKg={weightKg.trim() !== "" ? Number(weightKg) : undefined}
                   heightCm={heightCm.trim() !== "" ? Number(heightCm) : undefined}
+                  sourceVideoFile={sourceVideoFile}
                   onSolveComplete={setMujocoData}
                 />
                 <Skeleton3DViewer
