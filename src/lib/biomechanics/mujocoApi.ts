@@ -9,6 +9,8 @@ export interface MuJoCoJointResult {
   angle_deg: number;
   velocity_rad_s: number;
   torque_nm: number;
+  /** e.g. ``mujoco_inverse_dynamics`` vs ``smpl_keypoint_geometry`` from biomech-worker */
+  estimate?: string;
 }
 
 export type TwoMassStance = "none" | "l" | "r" | "double";
@@ -26,8 +28,70 @@ export interface MuJoCoFrameResult {
   /** Two-mass vGRF stance: flight / left / right (sprint pipeline omits double support) */
   two_mass_stance?: TwoMassStance;
   /** e.g. landmark_sprint — how stance was inferred */
-  two_mass_stance_source?: string;  
+  two_mass_stance_source?: string;
   vgrf_model?: string;
+  vertical_force?: number;
+  keypoints3d?: number[][];
+}
+
+/**
+ * Image-space ground / contact hints from MMPose COCO-17 ankles (biomech-worker Colab).
+ * ``y`` increases downward in the frame; ``floor_y_norm`` tracks a local ground band.
+ */
+export interface MmposeGait2dSeries {
+  schema_version: number;
+  coco_layout: string;
+  coordinate: string;
+  image_height_px: number;
+  image_width_px: number;
+  fps: number;
+  kpt_score_thr?: number;
+  method?: string;
+  floor_y_norm: number[];
+  ankle_l_y_norm: number[];
+  ankle_r_y_norm: number[];
+  clearance_l: number[];
+  clearance_r: number[];
+  contact_hint_l: number[];
+  contact_hint_r: number[];
+}
+
+export function parseMmposeGait2d(raw: unknown): MmposeGait2dSeries | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Record<string, unknown>;
+  const need = [
+    "floor_y_norm",
+    "ankle_l_y_norm",
+    "ankle_r_y_norm",
+    "clearance_l",
+    "clearance_r",
+    "contact_hint_l",
+    "contact_hint_r",
+  ] as const;
+  const arrays: number[][] = [];
+  for (const k of need) {
+    if (!Array.isArray(o[k])) return undefined;
+    arrays.push((o[k] as unknown[]).map((x) => Number(x)));
+  }
+  const n = arrays[0].length;
+  if (n < 1 || !arrays.every((a) => a.length === n)) return undefined;
+  return {
+    schema_version: Number(o.schema_version ?? 0),
+    coco_layout: String(o.coco_layout ?? "body17"),
+    coordinate: String(o.coordinate ?? "image_y_down_normalized"),
+    image_height_px: Number(o.image_height_px ?? 1),
+    image_width_px: Number(o.image_width_px ?? 1),
+    fps: Number(o.fps ?? 0),
+    kpt_score_thr: o.kpt_score_thr != null ? Number(o.kpt_score_thr) : undefined,
+    method: o.method != null ? String(o.method) : undefined,
+    floor_y_norm: arrays[0],
+    ankle_l_y_norm: arrays[1],
+    ankle_r_y_norm: arrays[2],
+    clearance_l: arrays[3],
+    clearance_r: arrays[4],
+    contact_hint_l: arrays[5],
+    contact_hint_r: arrays[6],
+  };
 }
 
 export function parseTwoMassStance(v: unknown): TwoMassStance | undefined {
@@ -63,6 +127,10 @@ export interface MuJoCoSolveResponse {
   };
   /** Raw JSON from the backend, always preserved for debugging */
   _raw: Record<string, unknown>;
+  /** Set by ``POST /analyze-full`` when Colab returned ``metadata.mmpose_gait_2d`` */
+  mmposeGait2d?: MmposeGait2dSeries;
+  /** Full ``results.metadata`` from analyze-full (merged Colab + worker) */
+  backendMetadata?: Record<string, unknown>;
 }
 
 const DEFAULT_BACKEND_URL = "https://biomech-worker.onrender.com";
@@ -227,6 +295,86 @@ function normaliseResponse(raw: Record<string, unknown>): MuJoCoSolveResponse {
     summary: defaultSummary(framesProcessed, rawSummary as Partial<MuJoCoSolveResponse["summary"]>),
     _raw: raw,
   };
+}
+
+export interface AnalyzeFullQuery {
+  heightCm?: number;
+  weightKg?: number;
+  fps?: number;
+}
+
+/** ``POST /analyze-full`` → ``{ status, results: { metadata, frames } }`` (HTTP 200). */
+function normaliseAnalyzeFullEnvelope(data: Record<string, unknown>): MuJoCoSolveResponse {
+  if (data.status === "error") {
+    throw new Error(String(data.error ?? "analyze-full returned status error"));
+  }
+  const results = data.results as Record<string, unknown> | undefined;
+  if (!results || !Array.isArray(results.frames)) {
+    throw new Error("Invalid analyze-full payload: missing results.frames");
+  }
+  const metadata = (results.metadata ?? {}) as Record<string, unknown>;
+  const frames = results.frames as unknown[];
+  const fpsMeta = Number(metadata.fps ?? 30) || 30;
+  let tw = 0;
+  for (const fr of frames) {
+    const w = (fr as { warnings?: unknown }).warnings;
+    if (Array.isArray(w)) tw += w.length;
+  }
+  const wrapped: Record<string, unknown> = {
+    frames: results.frames,
+    summary: {
+      total_frames: frames.length,
+      solve_time_s: 0,
+      mean_residual_m: 0,
+      max_residual_m: 0,
+      total_warnings: tw,
+      fps: fpsMeta,
+    },
+  };
+  const base = normaliseResponse(wrapped);
+  const gait = parseMmposeGait2d(metadata.mmpose_gait_2d);
+  return {
+    ...base,
+    ...(gait ? { mmposeGait2d: gait } : {}),
+    backendMetadata: metadata,
+    _raw: data,
+  };
+}
+
+/**
+ * GPU path: video → Colab (mmhuman3d + optional MMPose) → worker MuJoCo.
+ * Requires ``COLAB_BRIDGE_URL`` on the worker. Response may include ``mmposeGait2d``.
+ */
+export async function fetchAnalyzeFullVideo(
+  videoFile: File,
+  query: AnalyzeFullQuery = {},
+): Promise<MuJoCoSolveResponse> {
+  const base = getMuJoCoBackendUrl().replace(/\/$/, "");
+  const fd = new FormData();
+  fd.append("video", videoFile, videoFile.name || "upload.mp4");
+  const params = new URLSearchParams();
+  if (query.heightCm != null) params.set("height_cm", String(query.heightCm));
+  if (query.weightKg != null) params.set("weight_kg", String(query.weightKg));
+  if (query.fps != null) params.set("fps", String(query.fps));
+  const qs = params.toString();
+  const res = await fetch(`${base}/analyze-full${qs ? `?${qs}` : ""}`, {
+    method: "POST",
+    body: fd,
+    signal: AbortSignal.timeout(600_000),
+  });
+  let data: Record<string, unknown>;
+  try {
+    data = (await res.json()) as Record<string, unknown>;
+  } catch {
+    throw new Error(`analyze-full: non-JSON body (HTTP ${res.status})`);
+  }
+  if (!res.ok) {
+    throw new Error(String(data.error ?? data.detail ?? `HTTP ${res.status}`));
+  }
+  if (data.status === "error") {
+    throw new Error(String(data.error ?? "analyze-full failed"));
+  }
+  return normaliseAnalyzeFullEnvelope(data);
 }
 
 export async function solveMuJoCo(
