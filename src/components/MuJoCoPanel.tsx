@@ -5,11 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
-import { Download, Server, Loader2, AlertTriangle, Zap, ChevronDown, ChevronUp, Bug } from "lucide-react";
+import { Download, Server, Loader2, AlertTriangle, Zap, ChevronDown, ChevronUp, Bug, CloudUpload } from "lucide-react";
 import type { FrameLandmarks } from "@/lib/biomechanics/types";
 import {
   checkMuJoCoHealth,
   solveMuJoCo,
+  fetchAnalyzeFullVideo,
   getMuJoCoBackendUrl,
   setMuJoCoBackendUrl,
   twoMassStanceLabel,
@@ -22,6 +23,8 @@ interface Props {
   anthropometry?: Record<string, number>;
   weightKg?: number;
   heightCm?: number;
+  /** Original file for ``POST /analyze-full`` (GPU + optional MMPose gait). */
+  sourceVideoFile?: File | null;
   onSolveComplete?: (response: MuJoCoSolveResponse) => void;
 }
 
@@ -31,6 +34,7 @@ const MuJoCoPanel: React.FC<Props> = ({
   anthropometry,
   weightKg,
   heightCm,
+  sourceVideoFile,
   onSolveComplete,
 }) => {
   const landmarks = filteredLandmarks ?? [];
@@ -39,6 +43,7 @@ const MuJoCoPanel: React.FC<Props> = ({
   const [backendUrl, setBackendUrlLocal] = useState(getMuJoCoBackendUrl());
   const [isOnline, setIsOnline] = useState<boolean | null>(null);
   const [isSolving, setIsSolving] = useState(false);
+  const [isAnalyzeFull, setIsAnalyzeFull] = useState(false);
   const [progress, setProgress] = useState(0);
   const [response, setResponse] = useState<MuJoCoSolveResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +75,27 @@ const MuJoCoPanel: React.FC<Props> = ({
       setError(err.message || "Unknown error");
     } finally {
       setIsSolving(false);
+    }
+  };
+
+  const handleAnalyzeFull = async () => {
+    if (!sourceVideoFile) return;
+    setIsAnalyzeFull(true);
+    setError(null);
+    setProgress(0);
+    setResponse(null);
+    try {
+      const result = await fetchAnalyzeFullVideo(sourceVideoFile, {
+        heightCm,
+        weightKg,
+        fps: safeFps,
+      });
+      setResponse(result);
+      onSolveComplete?.(result);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsAnalyzeFull(false);
     }
   };
 
@@ -144,14 +170,14 @@ const MuJoCoPanel: React.FC<Props> = ({
               onChange={(e) => handleUrlChange(e.target.value)}
               placeholder="http://localhost:8000"
               className="h-8 text-sm font-mono"
-              disabled={isSolving}
+              disabled={isSolving || isAnalyzeFull}
             />
           </div>
           <Button
             size="sm"
             variant="outline"
             onClick={() => { setIsOnline(null); checkMuJoCoHealth().then(setIsOnline); }}
-            disabled={isSolving}
+            disabled={isSolving || isAnalyzeFull}
             className="font-mono text-xs"
           >
             Test
@@ -162,7 +188,7 @@ const MuJoCoPanel: React.FC<Props> = ({
         <div className="flex items-center gap-3">
           <Button
             onClick={handleSolve}
-            disabled={isSolving || !isOnline || landmarks.length < 2}
+            disabled={isSolving || isAnalyzeFull || !isOnline || landmarks.length < 2}
             className="gap-2 font-mono text-xs"
           >
             {isSolving ? (
@@ -183,6 +209,42 @@ const MuJoCoPanel: React.FC<Props> = ({
             </Button>
           )}
         </div>
+
+        {sourceVideoFile && (
+          <div className="space-y-2 rounded-md border border-border/60 bg-secondary/30 p-3">
+            <p className="text-[10px] font-mono text-muted-foreground leading-relaxed">
+              <strong className="text-foreground">GPU full track</strong> uploads the original video to{" "}
+              <code className="bg-secondary px-1 rounded">POST /analyze-full</code> (Colab mmhuman3d + optional MMPose).
+              Worker must set <code className="bg-secondary px-1 rounded">COLAB_BRIDGE_URL</code>. Runtime is often minutes.
+            </p>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={handleAnalyzeFull}
+              disabled={!isOnline || isSolving || isAnalyzeFull}
+              className="gap-2 font-mono text-xs"
+            >
+              {isAnalyzeFull ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  GPU analyze-full…
+                </>
+              ) : (
+                <>
+                  <CloudUpload className="w-3.5 h-3.5" />
+                  Run GPU full track
+                </>
+              )}
+            </Button>
+          </div>
+        )}
+
+        {isAnalyzeFull && (
+          <div className="w-full bg-secondary rounded-full h-1.5 overflow-hidden">
+            <div className="bg-primary h-1.5 w-1/3 animate-pulse rounded-full" />
+          </div>
+        )}
 
         {/* Progress bar */}
         {isSolving && (
