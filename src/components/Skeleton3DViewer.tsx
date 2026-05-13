@@ -576,6 +576,7 @@ const Skeleton3DViewer: React.FC<Props> = ({ mujocoData, landmarks, fps = 30 }) 
               landmarks={currentLandmark}
               mujocoFrame={currentMujocoFrame}
               showIMU={showIMU}
+              smplFaces={mujocoData?.smplFaces}
             />
 
             <OrbitControls
