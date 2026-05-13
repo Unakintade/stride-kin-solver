@@ -133,6 +133,8 @@ export interface MuJoCoSolveResponse {
   mmposeGait2d?: MmposeGait2dSeries;
   /** Full ``results.metadata`` from analyze-full (merged Colab + worker) */
   backendMetadata?: Record<string, unknown>;
+  /** SMPL face indices (~13k triangles) shared across all frames. */
+  smplFaces?: number[][];
 }
 
 const DEFAULT_BACKEND_URL = "https://biomech-worker.onrender.com";
