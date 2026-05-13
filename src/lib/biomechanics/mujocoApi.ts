@@ -228,6 +228,13 @@ function mapLandmarkKineticsFrame(raw: Record<string, unknown>, i: number): MuJo
         .filter((r): r is number[] => Array.isArray(r) && r.length >= 3)
     : undefined;
 
+  const vx = raw.vertices as unknown;
+  const vertices = Array.isArray(vx)
+    ? (vx as unknown[])
+        .map((row) => (Array.isArray(row) ? (row as unknown[]).map((v) => Number(v)) : null))
+        .filter((r): r is number[] => Array.isArray(r) && r.length >= 3)
+    : undefined;
+
   return {
     timestamp: Number(raw.timestamp ?? 0),
     frame_idx: Number(raw.frame_idx ?? i),
@@ -241,6 +248,7 @@ function mapLandmarkKineticsFrame(raw: Record<string, unknown>, i: number): MuJo
     two_mass_stance: parseTwoMassStance(raw.two_mass_stance),
     vertical_force: Number.isFinite(vf) ? vf : undefined,
     ...(keypoints3d && keypoints3d.length > 0 ? { keypoints3d } : {}),
+    ...(vertices && vertices.length > 0 ? { vertices } : {}),
   };
 }
 
