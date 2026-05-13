@@ -32,6 +32,8 @@ export interface MuJoCoFrameResult {
   vgrf_model?: string;
   vertical_force?: number;
   keypoints3d?: number[][];
+  /** SMPL surface vertices for this frame: [6890, 3] in metres, y-up. */
+  vertices?: number[][];
 }
 
 /**
