@@ -13,6 +13,7 @@ import type { MuJoCoSolveResponse, MuJoCoFrameResult } from "@/lib/biomechanics/
 import type { FrameLandmarks } from "@/lib/biomechanics/types";
 import { SKELETON_CONNECTIONS, LANDMARK_NAMES } from "@/lib/biomechanics/constants";
 import SmplSkeletonMesh from "@/components/SmplSkeleton";
+import SmplMeshSurface from "@/components/SmplMeshSurface";
 
 /* ─── Types ───────────────────────────────────────── */
 interface Props {
@@ -229,11 +230,19 @@ function IMUOverlay({ frame, jointName, position }: {
 }
 
 /* ─── Skeleton Scene ──────────────────────────────── */
-function SkeletonScene({ landmarks, mujocoFrame, showIMU }: {
+function SkeletonScene({ landmarks, mujocoFrame, showIMU, smplFaces }: {
   landmarks: FrameLandmarks | null;
   mujocoFrame: MuJoCoFrameResult | null;
   showIMU: boolean;
+  smplFaces?: number[][];
 }) {
+  // Prefer SMPL surface mesh (vertices + faces) when both are available.
+  const smplVertices = mujocoFrame?.vertices;
+  const hasSmplMesh =
+    Array.isArray(smplVertices) &&
+    smplVertices.length >= 100 &&
+    Array.isArray(smplFaces) &&
+    smplFaces.length > 0;
   // Prefer SMPL-24 keypoints from the backend (mmpose / mmhuman3d) when available.
   const smplKeypoints = mujocoFrame?.keypoints3d;
   const hasSmpl = Array.isArray(smplKeypoints) && smplKeypoints.length >= 16;
@@ -290,6 +299,31 @@ function SkeletonScene({ landmarks, mujocoFrame, showIMU }: {
       (ls[2] + rs[2]) / 2,
     ];
   }, [shiftedPositions]);
+
+  // SMPL surface mesh path (mmhuman3d 6890-vertex skin).
+  if (hasSmplMesh && smplVertices && smplFaces) {
+    return (
+      <group>
+        <SmplMeshSurface
+          vertices={smplVertices}
+          faces={smplFaces}
+          frame={mujocoFrame}
+          groundY={GROUND_PLANE_Y}
+        />
+        <Grid
+          args={[2, 2]}
+          cellSize={0.1}
+          cellThickness={0.5}
+          cellColor="hsl(200, 20%, 30%)"
+          sectionSize={0.5}
+          sectionThickness={1}
+          sectionColor="hsl(200, 30%, 40%)"
+          fadeDistance={3}
+          position={[0, GROUND_PLANE_Y, 0]}
+        />
+      </group>
+    );
+  }
 
   // SMPL-24 path: render mmpose/mmhuman3d keypoints with grounded skeleton.
   if (hasSmpl && smplKeypoints) {
@@ -542,6 +576,7 @@ const Skeleton3DViewer: React.FC<Props> = ({ mujocoData, landmarks, fps = 30 }) 
               landmarks={currentLandmark}
               mujocoFrame={currentMujocoFrame}
               showIMU={showIMU}
+              smplFaces={mujocoData?.smplFaces}
             />
 
             <OrbitControls

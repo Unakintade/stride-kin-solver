@@ -32,6 +32,8 @@ export interface MuJoCoFrameResult {
   vgrf_model?: string;
   vertical_force?: number;
   keypoints3d?: number[][];
+  /** SMPL surface vertices for this frame: [6890, 3] in metres, y-up. */
+  vertices?: number[][];
 }
 
 /**
@@ -131,6 +133,8 @@ export interface MuJoCoSolveResponse {
   mmposeGait2d?: MmposeGait2dSeries;
   /** Full ``results.metadata`` from analyze-full (merged Colab + worker) */
   backendMetadata?: Record<string, unknown>;
+  /** SMPL face indices (~13k triangles) shared across all frames. */
+  smplFaces?: number[][];
 }
 
 const DEFAULT_BACKEND_URL = "https://biomech-worker.onrender.com";
@@ -224,6 +228,13 @@ function mapLandmarkKineticsFrame(raw: Record<string, unknown>, i: number): MuJo
         .filter((r): r is number[] => Array.isArray(r) && r.length >= 3)
     : undefined;
 
+  const vx = raw.vertices as unknown;
+  const vertices = Array.isArray(vx)
+    ? (vx as unknown[])
+        .map((row) => (Array.isArray(row) ? (row as unknown[]).map((v) => Number(v)) : null))
+        .filter((r): r is number[] => Array.isArray(r) && r.length >= 3)
+    : undefined;
+
   return {
     timestamp: Number(raw.timestamp ?? 0),
     frame_idx: Number(raw.frame_idx ?? i),
@@ -237,6 +248,7 @@ function mapLandmarkKineticsFrame(raw: Record<string, unknown>, i: number): MuJo
     two_mass_stance: parseTwoMassStance(raw.two_mass_stance),
     vertical_force: Number.isFinite(vf) ? vf : undefined,
     ...(keypoints3d && keypoints3d.length > 0 ? { keypoints3d } : {}),
+    ...(vertices && vertices.length > 0 ? { vertices } : {}),
   };
 }
 
@@ -343,9 +355,18 @@ function normaliseAnalyzeFullEnvelope(data: Record<string, unknown>): MuJoCoSolv
   };
   const base = normaliseResponse(wrapped);
   const gait = parseMmposeGait2d(metadata.mmpose_gait_2d);
+  const facesRaw = metadata.smpl_faces as unknown;
+  const smplFaces = Array.isArray(facesRaw)
+    ? (facesRaw as unknown[])
+        .map((row) =>
+          Array.isArray(row) ? (row as unknown[]).map((v) => Number(v)) : null,
+        )
+        .filter((r): r is number[] => Array.isArray(r) && r.length === 3)
+    : undefined;
   return {
     ...base,
     ...(gait ? { mmposeGait2d: gait } : {}),
+    ...(smplFaces && smplFaces.length > 0 ? { smplFaces } : {}),
     backendMetadata: metadata,
     _raw: data,
   };
