@@ -355,9 +355,18 @@ function normaliseAnalyzeFullEnvelope(data: Record<string, unknown>): MuJoCoSolv
   };
   const base = normaliseResponse(wrapped);
   const gait = parseMmposeGait2d(metadata.mmpose_gait_2d);
+  const facesRaw = metadata.smpl_faces as unknown;
+  const smplFaces = Array.isArray(facesRaw)
+    ? (facesRaw as unknown[])
+        .map((row) =>
+          Array.isArray(row) ? (row as unknown[]).map((v) => Number(v)) : null,
+        )
+        .filter((r): r is number[] => Array.isArray(r) && r.length === 3)
+    : undefined;
   return {
     ...base,
     ...(gait ? { mmposeGait2d: gait } : {}),
+    ...(smplFaces && smplFaces.length > 0 ? { smplFaces } : {}),
     backendMetadata: metadata,
     _raw: data,
   };
