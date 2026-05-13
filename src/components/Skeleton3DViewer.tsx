@@ -230,11 +230,19 @@ function IMUOverlay({ frame, jointName, position }: {
 }
 
 /* ─── Skeleton Scene ──────────────────────────────── */
-function SkeletonScene({ landmarks, mujocoFrame, showIMU }: {
+function SkeletonScene({ landmarks, mujocoFrame, showIMU, smplFaces }: {
   landmarks: FrameLandmarks | null;
   mujocoFrame: MuJoCoFrameResult | null;
   showIMU: boolean;
+  smplFaces?: number[][];
 }) {
+  // Prefer SMPL surface mesh (vertices + faces) when both are available.
+  const smplVertices = mujocoFrame?.vertices;
+  const hasSmplMesh =
+    Array.isArray(smplVertices) &&
+    smplVertices.length >= 100 &&
+    Array.isArray(smplFaces) &&
+    smplFaces.length > 0;
   // Prefer SMPL-24 keypoints from the backend (mmpose / mmhuman3d) when available.
   const smplKeypoints = mujocoFrame?.keypoints3d;
   const hasSmpl = Array.isArray(smplKeypoints) && smplKeypoints.length >= 16;
