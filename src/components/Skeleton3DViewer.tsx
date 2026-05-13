@@ -300,6 +300,31 @@ function SkeletonScene({ landmarks, mujocoFrame, showIMU, smplFaces }: {
     ];
   }, [shiftedPositions]);
 
+  // SMPL surface mesh path (mmhuman3d 6890-vertex skin).
+  if (hasSmplMesh && smplVertices && smplFaces) {
+    return (
+      <group>
+        <SmplMeshSurface
+          vertices={smplVertices}
+          faces={smplFaces}
+          frame={mujocoFrame}
+          groundY={GROUND_PLANE_Y}
+        />
+        <Grid
+          args={[2, 2]}
+          cellSize={0.1}
+          cellThickness={0.5}
+          cellColor="hsl(200, 20%, 30%)"
+          sectionSize={0.5}
+          sectionThickness={1}
+          sectionColor="hsl(200, 30%, 40%)"
+          fadeDistance={3}
+          position={[0, GROUND_PLANE_Y, 0]}
+        />
+      </group>
+    );
+  }
+
   // SMPL-24 path: render mmpose/mmhuman3d keypoints with grounded skeleton.
   if (hasSmpl && smplKeypoints) {
     return (
